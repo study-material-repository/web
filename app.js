@@ -23,7 +23,7 @@
   const accountBalance = document.querySelector('#account-balance');
   const dialog = document.querySelector('#account-dialog');
   const formMessage = document.querySelector('#form-message');
-  const forms = [...document.querySelectorAll('.auth-form')];
+  const forms = [...document.querySelectorAll('#account-dialog .auth-form')];
   const toast = document.querySelector('#toast');
   const requestDialog = document.querySelector('#request-dialog');
   const requestSummary = document.querySelector('#request-summary');
@@ -54,6 +54,7 @@
     const requests = {
       getCatalogueSnapshot: ['catalogue_snapshot', { session_token: args[0] || '' }],
       getMemberCatalogueState: ['member_catalogue_state', { session_token: args[0] }],
+      memberRequestHistory: ['member_request_history', {session_token:state.token,cursor:args[0] || 0}],
       requestSchoolSignupCode: ['request_school_signup_code', { school_email: args[0] }],
       verifySchoolSignupCode: ['verify_school_signup_code', { challenge_id: args[0], code: args[1] }],
       requestLoginCode: ['request_login_code', { email: args[0] }],
@@ -66,7 +67,11 @@
       communityTasks: ['community_tasks', {session_token: state.token}],
       proposeCommunityTask: ['propose_community_task', {session_token: state.token, target_drive_item_id: args[0], title: args[1], note: args[2]}],
       voteCommunityTask: ['vote_community_task', {session_token: state.token, task_id: args[0], support: args[1]}],
-      submitCatalogueContribution: ['submit_catalogue_contribution', { session_token: args[0], target_drive_item_id: args[1], title: args[2], source_url: args[3], note: args[4] }]
+      fundCommunityTask: ['fund_community_task', {session_token: state.token, task_id: args[0], coins: args[1], request_id: args[2], withdraw: args[3] === true}],
+      communityReviewQueue: ['community_review_queue', {session_token: state.token}],
+      setCommunityYear: ['set_community_year', {session_token: state.token, year: args[0]}],
+      reviewContribution: ['review_contribution', {session_token: state.token, contribution_id: args[0], decision: args[1], note: args[2] || ''}],
+      submitCatalogueContribution: ['submit_catalogue_contribution', { session_token: args[0], target_drive_item_id: args[1], title: args[2], source_url: args[3], note: args[4], task_id: args.length > 5 ? args[5] : state.contributionTaskId || '' }]
     };
     const request = requests[name];
     if (!request) throw new Error('Unsupported SMR action.');
@@ -453,7 +458,10 @@
   document.querySelectorAll('.back-button').forEach(button => button.addEventListener('click', () => showForm('')));
   document.querySelector('#show-login').addEventListener('click', () => showForm('login-form'));
   document.querySelector('#show-signup').addEventListener('click', () => showForm('school-form'));
-  document.querySelector('#contribute-button').addEventListener('click', () => openContribution(''));
+  document.querySelector('#contribute-button').addEventListener('click', () => {
+    state.contributionTaskId = '';
+    chooseFolder(id => openContribution(id));
+  });
   document.querySelector('#close-contribution-dialog').addEventListener('click', () => contributionDialog.close());
   document.querySelector('#sign-out').addEventListener('click', async () => {
     try { await callServer('signOut', state.token); } catch { /* Local sign-out still succeeds. */ }
@@ -493,6 +501,7 @@
     hideTreeMenu();
   });
   document.querySelector('#tree-menu-contribute').addEventListener('click', () => {
+    state.contributionTaskId = '';
     const targetId = state.contextNodeId;
     hideTreeMenu();
     openContribution(targetId);
@@ -512,6 +521,9 @@
 
   contributionForm.addEventListener('submit', async event => {
     event.preventDefault();
+    const button = contributionForm.querySelector('button[type=submit]');
+    if (button.disabled) return;
+    button.disabled = true; button.classList.add('is-loading');
     contributionMessage.textContent = 'Submitting for review…';
     try {
       const result = await callServer('submitCatalogueContribution', state.token, state.contributionTargetId, document.querySelector('#contribution-title-input').value, document.querySelector('#contribution-url').value, document.querySelector('#contribution-note').value);
@@ -520,11 +532,18 @@
       showToast(result.duplicate ? 'That contribution is already waiting for review.' : 'Submitted for community review.');
     } catch (error) {
       contributionMessage.textContent = error.message;
-    }
+    } finally { button.disabled = false; button.classList.remove('is-loading'); }
   });
 
   document.querySelector('#login-form').addEventListener('submit', async event => {
     event.preventDefault();
+    const form = event.currentTarget;
+    if (form.getAttribute('aria-busy') === 'true') return;
+    form.setAttribute('aria-busy', 'true');
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.classList.add('is-loading');
+    button.textContent = 'Signing you in…';
     setMessage('Signing you in…');
     try {
       const result = await callServer('passwordLogin', document.querySelector('#login-email').value, document.querySelector('#login-password').value);
@@ -536,6 +555,12 @@
       showToast('Signed in.');
       refreshMemberCatalogueState().catch(error => showToast(error.message));
     } catch (error) { setMessage(error.message); }
+    finally {
+      form.setAttribute('aria-busy', 'false');
+      button.disabled = false;
+      button.classList.remove('is-loading');
+      button.textContent = 'Sign in';
+    }
   });
   document.querySelector('#use-login-code').addEventListener('click', async () => {
     setMessage('Sending your code…');
@@ -598,7 +623,6 @@
     } catch (error) { setMessage(error.message); }
   });
 
-  const communityDialog = document.querySelector('#community-dialog');
   const taskDialog = document.querySelector('#task-dialog');
   let taskTargetId = '';
   async function loadCommunityTasks() {
@@ -607,7 +631,7 @@
     status.textContent = 'Loading tasks…'; list.replaceChildren();
     try {
       const result = await callServer('communityTasks');
-      status.textContent = result.tasks.length ? '' : 'No proposals yet. Start one from a catalogue folder.';
+      status.textContent = result.tasks.length ? '' : 'No tasks yet. Propose something useful for the class.';
       for (const task of result.tasks) {
         const card = document.createElement('article'); card.className = 'community-task';
         const title = document.createElement('h3'); title.textContent = task.title;
@@ -621,15 +645,37 @@
           try { await callServer('voteCommunityTask', task.id, !task.supported); await loadCommunityTasks(); }
           catch (error) { status.textContent = error.message; vote.disabled = false; }
         });
-        card.append(title, path, note, vote); list.append(card);
+        card.append(title, path, note);
+        if (task.status === 'proposed') card.append(vote);
+        else {
+          const reward = document.createElement('p'); reward.textContent = (task.status === 'completed' ? 'Completed · ' : 'Reward · ') + coins(task.reward_coins) + ' coins'; card.append(reward);
+          if (task.status === 'open') {
+            card.append(actionButton('Add to reward', () => openFunding(task)));
+            if (task.my_funding_coins > 0) {
+              const requestId = crypto.randomUUID();
+              card.append(actionButton('Withdraw my ' + coins(task.my_funding_coins) + ' coins', async () => {
+                await callServer('fundCommunityTask', task.id, 0, requestId, true); await refreshMemberCatalogueState(); await loadCommunityTasks();
+              }));
+            }
+            card.append(actionButton('Submit work', () => {
+              state.contributionTaskId = task.id;
+              if (task.target_drive_item_id) openContribution(task.target_drive_item_id);
+              else chooseFolder(id => openContribution(id));
+            }));
+          }
+        }
+        list.append(card);
       }
     } catch (error) { status.textContent = error.message; }
   }
-  document.querySelector('#community-button').addEventListener('click', () => {
+  document.querySelector('#propose-task').addEventListener('click', () => {
     if (!state.member) return openAccount();
-    communityDialog.showModal(); loadCommunityTasks();
+    taskTargetId = '';
+    document.querySelector('#task-form').reset();
+    document.querySelector('#task-status').textContent = '';
+    document.querySelector('#task-destination').textContent = 'Community-wide task';
+    taskDialog.showModal();
   });
-  document.querySelector('#close-community').addEventListener('click', () => communityDialog.close());
   document.querySelector('#close-task').addEventListener('click', () => taskDialog.close());
   document.querySelector('#tree-menu-task').addEventListener('click', () => {
     const node = snapshotNodeById(state.contextNodeId); hideTreeMenu();
@@ -648,11 +694,134 @@
     button.disabled = true; status.textContent = 'Saving proposal…';
     try {
       await callServer('proposeCommunityTask', taskTargetId, document.querySelector('#task-name').value, document.querySelector('#task-note').value);
-      taskDialog.close(); communityDialog.showModal(); await loadCommunityTasks();
+      taskDialog.close(); showView('tasks');
     } catch (error) { status.textContent = error.message; }
     finally { button.disabled = false; }
   });
 
+  function actionButton(label, action) {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'tonal-button'; button.textContent = label;
+    button.addEventListener('click', async () => {
+      if (button.disabled) return;
+      button.disabled = true; button.classList.add('is-loading');
+      try { await action(); } catch (error) { showToast(error.message); }
+      finally { button.disabled = false; button.classList.remove('is-loading'); }
+    }); return button;
+  }
+  function showView(view) {
+    if (!['top','contribute','tasks','lending'].includes(view)) view = 'top';
+    for (const id of ['top','contribute','tasks','lending']) document.getElementById(id).hidden = id !== view;
+    document.querySelectorAll('[data-view]').forEach(button => { if (button.dataset.view === view) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
+    search.closest('label').style.visibility = view === 'top' ? '' : 'hidden';
+    if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
+    if (view === 'tasks') loadCommunityTasks();
+    if (view === 'contribute') loadReviews();
+  }
+  document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
+  document.querySelector('.brand').addEventListener('click', () => showView('top'));
+  window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
+  const picker = document.querySelector('#folder-picker'); let pickerId = '', pickCallback;
+  function chooseFolder(callback) {
+    if (!state.member) return openAccount();
+    pickCallback = callback; pickerId = ''; renderPicker(); picker.showModal();
+  }
+  function renderPicker() {
+    const folders = (state.snapshot?.nodes || []).filter(node => node.kind === 'folder');
+    const folderIds = new Set(folders.map(node => String(node.id)));
+    const current = snapshotNodeById(pickerId);
+    document.querySelector('#picker-path').textContent = current ? cataloguePathFor(current) : 'Browse folders';
+    document.querySelector('#picker-use').disabled = !current;
+    document.querySelector('#picker-back').disabled = !current;
+    const list = document.querySelector('#picker-folders'); list.replaceChildren();
+    const children = folders.filter(node => pickerId ? String(node.parent_id) === String(pickerId) : !folderIds.has(String(node.parent_id)));
+    children.forEach(node => list.append(actionButton(node.name + ' ›', () => { pickerId = node.id; renderPicker(); })));
+  }
+  document.querySelector('#picker-back').onclick = () => { pickerId = snapshotNodeById(pickerId)?.parent_id || ''; renderPicker(); };
+  document.querySelector('#picker-use').onclick = () => { picker.close(); pickCallback(pickerId); };
+  document.querySelector('#close-picker').onclick = () => picker.close();
+  const fundDialog = document.querySelector('#fund-dialog'); let fundingTask, fundingRequest;
+  function openFunding(task) {
+    fundingTask = task; fundingRequest = null;
+    document.querySelector('#fund-form').reset(); document.querySelector('#fund-amount').disabled = false;
+    document.querySelector('#fund-task').textContent = task.title; document.querySelector('#fund-status').textContent = ''; fundDialog.showModal();
+  }
+  document.querySelector('#close-fund').onclick = () => fundDialog.close();
+  document.querySelector('#fund-form').onsubmit = async event => {
+    event.preventDefault(); const button = event.target.querySelector('button'); if (button.disabled) return;
+    const input = document.querySelector('#fund-amount');
+    // Keep the exact same request reference and amount after an uncertain response.
+    fundingRequest ||= {id:crypto.randomUUID(), coins:input.value}; input.disabled = true; button.disabled = true;
+    const status = document.querySelector('#fund-status'); status.textContent = 'Holding your coins for this task…';
+    try { await callServer('fundCommunityTask', fundingTask.id, fundingRequest.coins, fundingRequest.id, false); fundDialog.close(); await refreshMemberCatalogueState(); await loadCommunityTasks(); }
+    catch (error) { status.textContent = error.message + ' You can retry this same contribution safely.'; }
+    finally { button.disabled = false; }
+  };
+  async function loadReviews() {
+    const status = document.querySelector('#review-status'); const list = document.querySelector('#review-list'); const mine = document.querySelector('#submission-list');
+    list.replaceChildren(); mine.replaceChildren(); status.textContent = 'Loading review queue…';
+    try {
+      const data = await callServer('communityReviewQueue');
+      document.querySelector('#year-form').hidden = Boolean(data.academic_year);
+      status.textContent = data.academic_year ? 'Year ' + data.academic_year + ' · Two independent approvals are required.' : 'Set your year to see matching review tasks.';
+      if (!data.items.length) list.textContent = 'No matching submissions to review right now.';
+      data.items.forEach(item => {
+        const card = document.createElement('article'); card.className = 'community-task';
+        const title = document.createElement('h3'); title.textContent = item.title;
+        const detail = document.createElement('p'); detail.textContent = item.path + (item.note ? ' — ' + item.note : '');
+        if (item.task) detail.textContent += '\nTask: ' + item.task.title + ' — ' + item.task.note;
+        if (item.my_decision) detail.textContent += '\nYour review: ' + item.my_decision + '. Waiting for the community; retry your recorded decision if publication was interrupted.';
+        const explanation = document.createElement('textarea'); explanation.placeholder = 'What needs fixing? Required when rejecting.'; explanation.maxLength = 1000; explanation.setAttribute('aria-label','Review note');
+        card.append(title,detail,actionButton('Open material', async () => {
+          const tab = window.open('about:blank','_blank'); if (tab) tab.opener = null;
+          try { const result = await callServer('reviewContribution',item.id,'open'); if (tab) tab.location.href = result.url; else showToast('Allow pop-ups to open the review material.'); }
+          catch(error) { if(tab) tab.close(); throw error; }
+        }),explanation);
+        for (const decision of (item.my_decision ? [item.my_decision] : ['approve','reject'])) card.append(actionButton(item.my_decision ? 'Check completion' : decision === 'approve' ? 'Approve' : 'Request changes', async () => {
+          const result = await callServer('reviewContribution',item.id,decision,explanation.value); showToast(result.status === 'pending' ? 'Review recorded. Waiting for other reviewers.' : 'Submission ' + result.status + '.'); await loadReviews();
+        }));
+        list.append(card);
+      });
+      data.mine.forEach(item => {
+        const row = document.createElement('p'); row.textContent = item.title + ' · ' + item.status;
+        if (item.needs_preparation) row.append(actionButton('Prepare for review', async () => {
+          await callServer('submitCatalogueContribution',state.token,item.target_id,item.title,item.source_url,item.note,''); await loadReviews();
+        }));
+        mine.append(row);
+      });
+      if (!data.mine.length) mine.textContent = 'Your submissions will appear here.';
+    } catch (error) { status.textContent = error.message; }
+  }
+  document.querySelector('#year-form').onsubmit = async event => {
+    event.preventDefault(); const button = event.target.querySelector('button'); button.disabled = true;
+    try { await callServer('setCommunityYear',document.querySelector('#review-year').value); await loadReviews(); }
+    catch(error) { showToast(error.message); } finally { button.disabled = false; }
+  };
+
+  const historyDialog = document.querySelector('#history-dialog'); let historyCursor = 0;
+  async function loadHistory() {
+    const status = document.querySelector('#history-status'); const more = document.querySelector('#history-more'); const list = document.querySelector('#history-list');
+    more.disabled = true; status.textContent = 'Loading your requests…';
+    try {
+      const result = await callServer('memberRequestHistory',historyCursor);
+      if (!historyCursor) list.replaceChildren();
+      result.items.forEach(item => {
+        const card = document.createElement('article'); card.className = 'community-task';
+        const title = document.createElement('h3'); title.textContent = item.file;
+        const detail = document.createElement('p');
+        const date = new Date(item.date); const when = Number.isNaN(date.valueOf()) ? '' : date.toLocaleString();
+        detail.textContent = (item.source === 'legacy' ? 'Imported access record' : 'Website request · ' + coins(item.coins) + ' coins') + ' · ' + String(item.status).toLowerCase() + (when ? ' · ' + when : '');
+        card.append(title,detail); list.append(card);
+      });
+      status.textContent = list.children.length ? '' : 'No file requests recorded yet.';
+      historyCursor = result.next_cursor; more.hidden = historyCursor === null;
+    } catch(error) { status.textContent = error.message; }
+    finally { more.disabled = false; }
+  }
+  document.querySelector('#show-history').onclick = () => { dialog.close(); historyCursor=0; document.querySelector('#history-list').replaceChildren(); historyDialog.showModal(); loadHistory(); };
+  document.querySelector('#history-more').onclick = loadHistory;
+  document.querySelector('#close-history').onclick = () => historyDialog.close();
+
   loadCachedCatalogue();
   loadCatalogue();
+  showView(location.hash.slice(1));
 })();
