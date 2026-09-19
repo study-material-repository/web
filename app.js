@@ -441,7 +441,8 @@
       }
       updateAccount();
       renderCatalogue();
-      syncStatus.innerHTML = '<span class="status-dot"></span>Synced';
+      syncStatus.innerHTML = state.snapshot.stale ? '<span class="status-dot"></span>Cached' : '<span class="status-dot"></span>Synced';
+      syncStatus.title = state.snapshot.stale ? 'Showing the last saved catalogue while Google refreshes it. File access and purchases are still checked separately.' : '';
     } catch (error) {
       tree.innerHTML = '<p class="loading-state">The catalogue could not load. Refresh to try again.</p>';
       syncStatus.textContent = 'Unavailable';
