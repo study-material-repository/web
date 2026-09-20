@@ -8,21 +8,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:opsz,wght@17..18,400;17..18,500;17..18,700&family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20260919-workspace" />
+    <link rel="stylesheet" href="./styles.css?v=20260920-community" />
   </head>
   <body>
     <nav class="app-navigation" aria-label="Main navigation">
       <button data-view="top" aria-current="page"><span class="material-symbols-outlined" aria-hidden="true">auto_stories</span>Catalogue</button>
-      <button data-view="contribute"><span class="material-symbols-outlined" aria-hidden="true">add_circle</span>Contribute</button>
-      <button data-view="tasks"><span class="material-symbols-outlined" aria-hidden="true">assignment</span>Tasks</button>
+      <button data-view="contribute"><span class="material-symbols-outlined" aria-hidden="true">diversity_3</span>Community</button>
       <button data-view="lending"><span class="material-symbols-outlined" aria-hidden="true">handshake</span>Lending</button>
-      <button data-view="activity"><span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>Activity</button>
+      <button data-view="chat"><span class="material-symbols-outlined" aria-hidden="true">forum</span>Chat</button>
+      <button data-view="activity"><span class="material-symbols-outlined" aria-hidden="true">account_circle</span>Account</button>
     </nav>
     <main class="app-shell">
       <header class="top-bar">
         <a class="brand" href="#top" aria-label="SMR home"><span class="brand-mark material-symbols-outlined" aria-hidden="true">auto_stories</span><span>SMR</span></a>
         <label class="search" for="catalogue-search"><span class="material-symbols-outlined" aria-hidden="true">search</span><input id="catalogue-search" type="search" placeholder="Search materials" autocomplete="off" /><kbd>⌘ K</kbd></label>
-        <button class="account-button" id="account-button" type="button" aria-label="Open account"><span class="material-symbols-outlined" aria-hidden="true">account_circle</span><span class="account-name">Sign in</span><span class="account-balance" id="account-balance" hidden></span></button>
       </header>
       <section class="catalogue-layout" id="top" aria-label="Course catalogue">
         <section class="catalogue-card">
@@ -33,13 +32,14 @@
         </section>
       </section>
       <section class="workspace-panel" id="contribute" hidden aria-labelledby="contribute-heading">
-        <div class="workspace-heading"><div><h1 id="contribute-heading">Contribute</h1><p>Share a resource. Help your class.</p></div><button class="tonal-button" id="contribute-button" type="button"><span class="material-symbols-outlined" aria-hidden="true">add</span>Submit material</button></div>
+        <div class="workspace-heading"><div><h1 id="contribute-heading">Community</h1><p>Contribute material, complete useful work and review your year’s submissions.</p></div><div class="workspace-actions"><button class="tonal-button" id="contribute-button" type="button"><span class="material-symbols-outlined" aria-hidden="true">add</span>Submit material</button><button id="propose-task" class="tonal-button"><span class="material-symbols-outlined" aria-hidden="true">assignment_add</span>Propose task</button></div></div>
         <form id="year-form" class="task-form"><label>Your academic year<select id="review-year" required><option value="">Choose your year</option><option value="1">Year 1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option></select></label><button class="tonal-button" type="submit">Save year</button></form>
         <p id="review-status" role="status" aria-live="polite"></p><div class="contribution-columns"><section class="contribution-section"><h2>Your submissions</h2><div id="submission-list"></div></section><section class="contribution-section"><h2>For you to review</h2><div id="review-list"></div></section></div>
       </section>
-      <section class="workspace-panel" id="tasks" hidden aria-labelledby="tasks-heading"><div class="dialog-header"><h1 id="tasks-heading">Tasks</h1><button id="propose-task" class="tonal-button">Propose a task</button></div><p>Compile slides, convert a PDF, work through a paper, find materials—or propose something else useful. Three supporters open a task.</p><p id="community-status" role="status" aria-live="polite"></p><div id="community-list"></div></section>
+      <section class="workspace-panel embedded-tasks" id="tasks" hidden aria-labelledby="tasks-heading"><h2 id="tasks-heading">Community tasks</h2><p>Three supporters activate a task. Standard work receives a treasury-funded reward; members can add more.</p><p id="community-status" role="status" aria-live="polite"></p><div id="community-list"></div></section>
       <section class="workspace-panel" id="lending" hidden><h1>Lending</h1><p>Member-to-member coin lending is planned. It will stay disabled until repayment dates, consent and missed-payment rules are agreed.</p></section>
-      <section class="workspace-panel" id="activity" hidden aria-labelledby="activity-heading"><div class="workspace-heading"><h1 id="activity-heading">Activity</h1><button id="activity-account" class="text-button">Account</button></div><div class="balance-summary"><div><p class="eyebrow">Available coins</p><strong id="activity-balance">—</strong></div><div><p class="eyebrow">Drive delivery address</p><p id="activity-email"></p></div></div><h2>File requests</h2><p class="dialog-copy">Newest first. Imported records are history, not confirmation of current Drive access.</p><p id="history-status" role="status"></p><div id="history-list"></div><button id="history-more" class="text-button" hidden>Older records</button></section>
+      <section class="workspace-panel" id="chat" hidden><div class="workspace-heading"><div><h1>Chat</h1><p>Direct messages refresh periodically. Message content is visible only to the two members.</p></div></div><div class="chat-layout"><aside><form id="chat-peer-form" class="task-form"><label>UoN username or email<input id="chat-peer" autocomplete="off" required /></label><button class="tonal-button" type="submit">Open conversation</button></form><div id="chat-contacts"></div></aside><section class="chat-thread"><div id="chat-messages"><p>Choose a conversation.</p></div><form id="chat-form" class="task-form" hidden><label>Message<textarea id="chat-body" maxlength="1000" rows="3" required></textarea></label><button class="tonal-button" type="submit">Send</button></form></section></div></section>
+      <section class="workspace-panel" id="activity" hidden aria-labelledby="activity-heading"><div class="workspace-heading"><h1 id="activity-heading">Account</h1><button id="activity-account" class="tonal-button">Sign in or manage account</button></div><div class="balance-summary"><div><p class="eyebrow">Available coins</p><strong id="activity-balance">—</strong></div><div id="treasury-summary" hidden><p class="eyebrow">Repository treasury</p><strong id="treasury-balance">—</strong></div><div><p class="eyebrow">Drive delivery address</p><p id="activity-email"></p></div></div><section class="account-action-card"><h2>Send coins</h2><form id="send-coins-form" class="task-form"><label>Friend’s UoN username or email<input id="coin-recipient" autocomplete="off" required /></label><label>Coins<input id="coin-amount" type="number" min="0.001" step="0.001" required /></label><button class="tonal-button" type="submit">Send coins</button></form></section><h2>File requests</h2><p class="dialog-copy">Newest first. Imported successful records help prioritize live verification; current Drive permission determines whether a file is available.</p><p id="history-status" role="status"></p><div id="history-list"></div><button id="history-more" class="text-button" hidden>Older records</button></section>
     </main>
     <dialog id="folder-picker" class="account-dialog"><div class="dialog-header"><h2>Choose a destination</h2><button id="close-picker" class="icon-button" aria-label="Close">×</button></div><p id="picker-path"></p><button id="picker-back" class="text-button">Back a level</button><div id="picker-folders"></div><button id="picker-use" class="tonal-button">Use this folder</button></dialog>
     <dialog id="fund-dialog" class="account-dialog"><div class="dialog-header"><h2>Add to reward</h2><button id="close-fund" class="icon-button" aria-label="Close">×</button></div><p id="fund-task"></p><p>Coins are held for the first submission approved by the community. You can withdraw your contribution before the task is completed.</p><form id="fund-form" class="task-form"><label>Coins<input id="fund-amount" type="number" min="0.001" step="0.001" required /></label><button class="tonal-button" type="submit">Add coins</button></form><p id="fund-status" role="status"></p></dialog>
@@ -47,6 +47,7 @@
       <div class="dialog-header"><h2 id="task-title">Propose a task</h2><button id="close-task" class="icon-button" type="button" aria-label="Close task proposal">×</button></div>
       <p id="task-destination" class="dialog-copy"></p>
       <form id="task-form" class="task-form">
+        <label>Task type<select id="task-type" required><option value="book">Find a book — 10 🪙</option><option value="pdf_to_doc">Convert PDF to Doc or Markdown — 10 🪙</option><option value="compile_slides">Compile slides — 10 🪙</option><option value="past_paper">Find a past paper — 20 🪙</option><option value="special_exam">Find a supplementary or special exam — 30 🪙</option><option value="other">Other community task — member funded</option></select></label>
         <label>What needs doing?<input id="task-name" minlength="5" maxlength="180" required placeholder="e.g. Combine this semester’s slides into one PDF" /></label>
         <label>Describe the result you need<textarea id="task-note" maxlength="1000" rows="3" required></textarea></label>
         <button class="tonal-button" type="submit">Propose task</button>
@@ -92,7 +93,7 @@
       <button id="tree-menu-expand-level" type="button" role="menuitem"><span class="material-symbols-outlined" aria-hidden="true">unfold_more</span><span>Expand folders at this level</span></button>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-    <script src="./config.js?v=20260919-workspace"></script>
-    <script src="./app.js?v=20260919-workspace"></script>
+    <script src="./config.js?v=20260920-community"></script>
+    <script src="./app.js?v=20260920-community"></script>
   </body>
 </html>

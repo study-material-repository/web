@@ -20,7 +20,6 @@
   const emptyState = document.querySelector('#empty-state');
   const syncStatus = document.querySelector('#sync-status');
   const accountButton = document.querySelector('#account-button');
-  const accountBalance = document.querySelector('#account-balance');
   const dialog = document.querySelector('#account-dialog');
   const formMessage = document.querySelector('#form-message');
   const forms = [...document.querySelectorAll('#account-dialog .auth-form')];
@@ -52,7 +51,7 @@
 
   const viewCache = new Map();
   let cacheEpoch = 0, warmingToken = '';
-  const cachedReads = new Set(['communityTasks', 'communityReviewQueue', 'memberRequestHistory']);
+  const cachedReads = new Set(['communityTasks', 'communityReviewQueue', 'memberRequestHistory', 'chatSnapshot', 'communityProfile']);
   function invalidateViews() { cacheEpoch++; viewCache.clear(); }
   async function warmViews() {
     const token = state.token;
@@ -73,7 +72,7 @@
   async function callServer(name, ...args) {
     if (!cachedReads.has(name)) {
       const result = await sendServer(name, ...args);
-      if (['submitCatalogueContribution','reviewContribution','setCommunityYear','fundCommunityTask','voteCommunityTask','proposeCommunityTask','requestCatalogueAccess','signOut'].includes(name)) {
+      if (['submitCatalogueContribution','reviewContribution','setCommunityYear','fundCommunityTask','voteCommunityTask','proposeCommunityTask','requestCatalogueAccess','sendCoins','sendChatMessage','signOut'].includes(name)) {
         invalidateViews(); warmingToken = '';
         if (name !== 'signOut') queueMicrotask(warmViews);
       }
@@ -108,13 +107,17 @@
       quoteCatalogueAccess: ['quote_catalogue_access', { session_token: args[0], drive_item_id: args[1] }],
       requestCatalogueAccess: ['request_catalogue_access', { session_token: args[0], drive_item_id: args[1], check_only: args[2] === true, check_token: args[3] || '' }],
       communityTasks: ['community_tasks', {session_token: state.token}],
-      proposeCommunityTask: ['propose_community_task', {session_token: state.token, target_drive_item_id: args[0], title: args[1], note: args[2]}],
+      proposeCommunityTask: ['propose_community_task', {session_token: state.token, target_drive_item_id: args[0], title: args[1], note: args[2], task_type: args[3] || 'other'}],
       voteCommunityTask: ['vote_community_task', {session_token: state.token, task_id: args[0], support: args[1]}],
       fundCommunityTask: ['fund_community_task', {session_token: state.token, task_id: args[0], coins: args[1], request_id: args[2], withdraw: args[3] === true}],
       communityReviewQueue: ['community_review_queue', {session_token: state.token}],
       setCommunityYear: ['set_community_year', {session_token: state.token, year: args[0]}],
-      reviewContribution: ['review_contribution', {session_token: state.token, contribution_id: args[0], decision: args[1], note: args[2] || ''}],
+      reviewContribution: ['review_contribution', {session_token: state.token, contribution_id: args[0], decision: args[1], note: args[2] || '', proposed_title: args[3] || ''}],
       submitCatalogueContribution: ['submit_catalogue_contribution', { session_token: args[0], target_drive_item_id: args[1], title: args[2], source_url: args[3], note: args[4], task_id: args.length > 5 ? args[5] : state.contributionTaskId || '' }]
+      ,sendCoins: ['send_coins', {session_token:state.token,recipient:args[0],coins:args[1],request_id:args[2]}]
+      ,chatSnapshot: ['chat_snapshot', {session_token:state.token,peer:args[0] || ''}]
+      ,sendChatMessage: ['send_chat_message', {session_token:state.token,recipient:args[0],body:args[1]}]
+      ,communityProfile: ['community_profile', {session_token:state.token}]
     };
     const request = requests[name];
     if (!request) throw new Error('Unsupported SMR action.');
@@ -124,6 +127,10 @@
       body: JSON.stringify({ action: request[0], payload: request[1] })
     });
     const body = await response.json().catch(() => null);
+    document.querySelectorAll('#account-dialog form[aria-busy="true"]').forEach(form => {
+      form.setAttribute('aria-busy','false');
+      form.querySelectorAll('.is-loading').forEach(button => { button.disabled = false; button.classList.remove('is-loading'); });
+    });
     if (!body || !body.ok) throw new Error((body && body.error) || 'The SMR service could not complete that request.');
     return body.data;
   }
@@ -176,11 +183,31 @@
   }
   function updateAccount() {
     const signedIn = Boolean(state.member);
-    document.querySelector('.account-name').textContent = signedIn ? 'Your account' : 'Sign in';
-    accountBalance.hidden = !signedIn;
-    if (signedIn) accountBalance.textContent = coins(state.member.balance_coins) + ' 🪙';
     document.querySelector('#activity-balance').textContent = signedIn ? coins(state.member.balance_coins) + ' 🪙' : '—';
     document.querySelector('#activity-email').textContent = signedIn ? state.member.delivery_email || state.member.school_email || '' : '';
+    const treasury = document.querySelector('#treasury-summary');
+    treasury.hidden = !signedIn || !state.member.is_admin;
+    if (!treasury.hidden) document.querySelector('#treasury-balance').textContent = coins(state.member.treasury_balance_coins) + ' 🪙';
+    document.querySelector('#activity-account').textContent = signedIn ? 'Manage account' : 'Sign in or create account';
+  }
+  async function loadCommunityProfile() {
+    let panel = document.querySelector('#community-profile');
+    if (!panel) {
+      panel = document.createElement('section'); panel.id='community-profile'; panel.className='contributor-profile';
+      document.querySelector('#activity .balance-summary').before(panel);
+    }
+    if (!state.token) { panel.hidden=true; return; }
+    panel.hidden=false; busy(panel);
+    try {
+      const profile=await callServer('communityProfile');
+      const next=profile.next_level_points;
+      const progress=next ? Math.min(100,Math.round(profile.points/next*100)) : 100;
+      panel.innerHTML='<div><p class="eyebrow">Community contributor</p><h2></h2><p class="profile-stats"></p></div><div class="level-progress"><span></span></div><p class="profile-next"></p>';
+      panel.querySelector('h2').textContent=profile.label+' · Level '+profile.level;
+      panel.querySelector('.profile-stats').textContent=profile.approved_contributions+' contributions · '+profile.reviews+' reviews · '+profile.activated_tasks+' useful tasks';
+      panel.querySelector('.level-progress span').style.width=progress+'%';
+      panel.querySelector('.profile-next').textContent=next ? (next-profile.points)+' points to Level '+(profile.level+1) : profile.points+' contribution points';
+    } catch(error) { panel.textContent=error.message; }
   }
   function getExpansionStateKey() {
     return 'smr_catalogue_expansion_v1:' + (state.member && state.member.member_id ? state.member.member_id : state.memberId || 'guest');
@@ -501,7 +528,7 @@
     }
   }
 
-  accountButton.addEventListener('click', openAccount);
+  if (accountButton) accountButton.addEventListener('click', openAccount);
   document.querySelector('#close-dialog').addEventListener('click', () => dialog.close());
   document.querySelector('#close-request-dialog').addEventListener('click', () => closeRequestDialog(false));
   document.querySelector('#cancel-request').addEventListener('click', () => closeRequestDialog(false));
@@ -510,6 +537,11 @@
   document.querySelectorAll('.back-button').forEach(button => button.addEventListener('click', () => showForm('')));
   document.querySelector('#show-login').addEventListener('click', () => showForm('login-form'));
   document.querySelector('#show-signup').addEventListener('click', () => showForm('school-form'));
+  dialog.addEventListener('submit', event => {
+    const form = event.target;
+    const button = form.querySelector('button[type="submit"]');
+    if (button) { form.setAttribute('aria-busy','true'); button.disabled = true; button.classList.add('is-loading'); }
+  }, true);
   document.querySelector('#contribute-button').addEventListener('click', () => {
     state.contributionTaskId = '';
     chooseFolder(id => openContribution(id));
@@ -596,7 +628,6 @@
   document.querySelector('#login-form').addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
-    if (form.getAttribute('aria-busy') === 'true') return;
     form.setAttribute('aria-busy', 'true');
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
@@ -621,17 +652,19 @@
     }
   });
   document.querySelector('#use-login-code').addEventListener('click', async () => {
-    setMessage('Sending your code…');
+    const button = document.querySelector('#use-login-code');
+    button.disabled = true; button.classList.add('is-loading'); setMessage('');
     try {
       const result = await callServer('requestLoginCode', document.querySelector('#login-email').value);
       state.loginChallengeId = result.challenge_id || '';
       showForm('login-code-form');
       setMessage('Your code is on the way.');
     } catch (error) { setMessage(error.message); }
+    finally { button.disabled = false; button.classList.remove('is-loading'); }
   });
   document.querySelector('#login-code-form').addEventListener('submit', async event => {
     event.preventDefault();
-    setMessage('Signing you in…');
+    setMessage('');
     try {
       const result = await callServer('completeLogin', state.loginChallengeId, document.querySelector('#login-code').value);
       state.token = result.session_token;
@@ -644,7 +677,7 @@
   });
   document.querySelector('#school-form').addEventListener('submit', async event => {
     event.preventDefault();
-    setMessage('Sending your code…');
+    setMessage('');
     try {
       const result = await callServer('requestSchoolSignupCode', document.querySelector('#school-email').value);
       state.schoolChallengeId = result.challenge_id;
@@ -654,7 +687,7 @@
   });
   document.querySelector('#school-code-form').addEventListener('submit', async event => {
     event.preventDefault();
-    setMessage('Verifying…');
+    setMessage('');
     try {
       const result = await callServer('verifySchoolSignupCode', state.schoolChallengeId, document.querySelector('#school-code').value);
       state.token = result.session_token;
@@ -669,7 +702,7 @@
     event.preventDefault();
     const password = document.querySelector('#password-setup').value;
     if (password !== document.querySelector('#password-confirm').value) return setMessage('Those passwords do not match.');
-    setMessage('Saving password…');
+    setMessage('');
     try {
       const result = await callServer('setPassword', state.token, password);
       rememberMember(result.member || state.member);
@@ -751,8 +784,8 @@
     const status = document.querySelector('#task-status');
     button.disabled = true; busy(status);
     try {
-      await callServer('proposeCommunityTask', taskTargetId, document.querySelector('#task-name').value, document.querySelector('#task-note').value);
-      taskDialog.close(); showView('tasks');
+      await callServer('proposeCommunityTask', taskTargetId, document.querySelector('#task-name').value, document.querySelector('#task-note').value, document.querySelector('#task-type').value);
+      taskDialog.close(); showView('contribute'); await loadCommunityTasks();
     } catch (error) { status.textContent = error.message; }
     finally { button.disabled = false; }
   });
@@ -767,14 +800,16 @@
     }); return button;
   }
   function showView(view) {
-    if (!['top','contribute','tasks','lending','activity'].includes(view)) view = 'top';
-    for (const id of ['top','contribute','tasks','lending','activity']) document.getElementById(id).hidden = id !== view;
+    if (view === 'tasks') view = 'contribute';
+    if (!['top','contribute','lending','chat','activity'].includes(view)) view = 'top';
+    for (const id of ['top','contribute','lending','chat','activity']) document.getElementById(id).hidden = id !== view;
+    document.getElementById('tasks').hidden = view !== 'contribute';
     document.querySelectorAll('[data-view]').forEach(button => { if (button.dataset.view === view) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     search.closest('label').style.visibility = view === 'top' ? '' : 'hidden';
     if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
-    if (view === 'tasks') loadCommunityTasks();
-    if (view === 'contribute') loadReviews();
-    if (view === 'activity') { historyCursor = 0; loadHistory(); }
+    if (view === 'contribute') { loadReviews(); loadCommunityTasks(); }
+    if (view === 'activity') { historyCursor = 0; loadHistory(); loadCommunityProfile(); }
+    if (view === 'chat') loadChat();
   }
   document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
   document.querySelector('.brand').addEventListener('click', () => showView('top'));
@@ -823,22 +858,25 @@
     try {
       const data = await callServer('communityReviewQueue');
       document.querySelector('#year-form').hidden = Boolean(data.academic_year);
-      status.textContent = data.academic_year ? 'Year ' + data.academic_year + ' · Two independent approvals are required.' : 'Set your year to see matching review tasks.';
+      status.textContent = data.is_admin ? 'Administrator review · one approval publishes.' : data.academic_year ? 'Year ' + data.academic_year + ' · Two independent approvals are required.' : 'Set your year to see matching review tasks.';
+      if (!data.items.length && data.next_review_at) status.textContent = 'Your next community review becomes available ' + new Date(data.next_review_at).toLocaleDateString() + '.';
       if (!data.items.length) list.textContent = 'No matching submissions to review right now.';
       data.items.forEach(item => {
         const card = document.createElement('article'); card.className = 'community-task';
         const title = document.createElement('h3'); title.textContent = item.title;
+        const publishedName = document.createElement('input'); publishedName.value = item.title; publishedName.maxLength = 180; publishedName.setAttribute('aria-label','Published file name'); publishedName.className = 'review-name';
         const detail = document.createElement('p'); detail.textContent = item.path + (item.note ? ' — ' + item.note : '');
         if (item.task) detail.textContent += '\nTask: ' + item.task.title + ' — ' + item.task.note;
         if (item.my_decision) detail.textContent += '\nYour review: ' + item.my_decision + '. Waiting for the community; retry your recorded decision if publication was interrupted.';
         const explanation = document.createElement('textarea'); explanation.placeholder = 'What needs fixing? Required when rejecting.'; explanation.maxLength = 1000; explanation.setAttribute('aria-label','Review note');
-        card.append(title,detail,actionButton('Open material', async () => {
+        card.classList.add('review-card');
+        card.append(title,detail,publishedName,actionButton('Open material', async () => {
           const tab = window.open('about:blank','_blank'); if (tab) tab.opener = null;
           try { const result = await callServer('reviewContribution',item.id,'open'); if (tab) tab.location.href = result.url; else showToast('Allow pop-ups to open the review material.'); }
           catch(error) { if(tab) tab.close(); throw error; }
         }),explanation);
         for (const decision of (item.my_decision ? [item.my_decision] : ['approve','reject'])) card.append(actionButton(item.my_decision ? 'Check completion' : decision === 'approve' ? 'Approve' : 'Request changes', async () => {
-          const result = await callServer('reviewContribution',item.id,decision,explanation.value); showToast(result.status === 'pending' ? 'Review recorded. Waiting for other reviewers.' : 'Submission ' + result.status + '.'); await loadReviews();
+          const result = await callServer('reviewContribution',item.id,decision,explanation.value,publishedName.value); showToast(result.status === 'pending' ? 'Review recorded. Waiting for another independent reviewer.' : 'Submission ' + result.status + '.'); await loadReviews();
         }));
         list.append(card);
       });
@@ -893,6 +931,41 @@
   document.querySelector('#show-history').onclick = () => { dialog.close(); showView('activity'); };
   document.querySelector('#history-more').onclick = loadHistory;
   document.querySelector('#activity-account').onclick = openAccount;
+  document.querySelector('#send-coins-form').onsubmit = async event => {
+    event.preventDefault();
+    if (!state.token) return openAccount();
+    const form = event.currentTarget, button = form.querySelector('button');
+    button.disabled = true; button.classList.add('is-loading');
+    try {
+      const result = await callServer('sendCoins',document.querySelector('#coin-recipient').value,document.querySelector('#coin-amount').value,crypto.randomUUID());
+      state.member.balance_coins = result.balance_coins; updateAccount(); form.reset(); showToast('Coins sent to '+result.recipient+'.');
+    } catch(error) { showToast(error.message); }
+    finally { button.disabled=false; button.classList.remove('is-loading'); }
+  };
+
+  let chatPeer = '';
+  async function loadChat(peer) {
+    const contacts = document.querySelector('#chat-contacts'), messages = document.querySelector('#chat-messages'), form = document.querySelector('#chat-form');
+    if (!state.token) { contacts.textContent='Sign in to use chat.'; messages.replaceChildren(); form.hidden=true; return; }
+    if (peer !== undefined) chatPeer = peer;
+    busy(messages);
+    try {
+      const data = await callServer('chatSnapshot',chatPeer);
+      contacts.replaceChildren();
+      data.contacts.forEach(contact => contacts.append(actionButton(contact.label,()=>{chatPeer=contact.id;invalidateViews();return loadChat();})));
+      messages.replaceChildren();
+      if (!data.peer) { messages.textContent='Choose or open a conversation.'; form.hidden=true; return; }
+      chatPeer=data.peer.id; form.hidden=false; form.dataset.peerLabel=data.peer.label;
+      data.messages.forEach(message=>{const row=document.createElement('p');row.className='chat-message '+(message.sent_by_me?'mine':'theirs');row.textContent=message.body;messages.append(row);});
+      if (!data.messages.length) messages.textContent='No messages yet.';
+    } catch(error) { messages.textContent=error.message; form.hidden=true; }
+  }
+  document.querySelector('#chat-peer-form').onsubmit = async event => { event.preventDefault(); invalidateViews(); await loadChat(document.querySelector('#chat-peer').value); };
+  document.querySelector('#chat-form').onsubmit = async event => {
+    event.preventDefault(); const button=event.currentTarget.querySelector('button'); button.disabled=true;button.classList.add('is-loading');
+    try { await callServer('sendChatMessage',chatPeer,document.querySelector('#chat-body').value); document.querySelector('#chat-body').value=''; invalidateViews(); await loadChat(); }
+    catch(error){showToast(error.message);} finally {button.disabled=false;button.classList.remove('is-loading');}
+  };
   document.querySelectorAll('.school-input input').forEach(input => input.addEventListener('input', () => { input.nextElementSibling.hidden = input.value.includes('@'); }));
   // Scroll inside the rounded surface, never along its outer edge.
   document.querySelectorAll('dialog.account-dialog').forEach(modal => {
