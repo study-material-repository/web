@@ -118,6 +118,7 @@
       ,chatSnapshot: ['chat_snapshot', {session_token:state.token,peer:args[0] || ''}]
       ,sendChatMessage: ['send_chat_message', {session_token:state.token,recipient:args[0],body:args[1]}]
       ,communityProfile: ['community_profile', {session_token:state.token}]
+      ,adminRefreshCatalogue: ['admin_refresh_catalogue', {session_token:state.token}]
     };
     const request = requests[name];
     if (!request) throw new Error('Unsupported SMR action.');
@@ -189,6 +190,13 @@
     treasury.hidden = !signedIn || !state.member.is_admin;
     if (!treasury.hidden) document.querySelector('#treasury-balance').textContent = coins(state.member.treasury_balance_coins) + ' 🪙';
     document.querySelector('#activity-account').textContent = signedIn ? 'Manage account' : 'Sign in or create account';
+    let refresh = document.querySelector('#admin-refresh-catalogue');
+    if (signedIn && state.member.is_admin && !refresh) {
+      refresh=document.createElement('button'); refresh.id='admin-refresh-catalogue'; refresh.className='tonal-button'; refresh.textContent='Refresh Drive catalogue';
+      document.querySelector('#activity .workspace-heading').append(refresh);
+      refresh.onclick=async()=>{refresh.disabled=true;refresh.classList.add('is-loading');try{await callServer('adminRefreshCatalogue');showToast('A full Drive reconciliation has started.');}catch(error){showToast(error.message);}finally{refresh.disabled=false;refresh.classList.remove('is-loading');}};
+    }
+    if (refresh) refresh.hidden = !signedIn || !state.member.is_admin;
   }
   async function loadCommunityProfile() {
     let panel = document.querySelector('#community-profile');
