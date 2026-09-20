@@ -50,7 +50,50 @@
     return configured + '/api';
   }
 
+  const viewCache = new Map();
+  let cacheEpoch = 0, warmingToken = '';
+  const cachedReads = new Set(['communityTasks', 'communityReviewQueue', 'memberRequestHistory']);
+  function invalidateViews() { cacheEpoch++; viewCache.clear(); }
+  async function warmViews() {
+    const token = state.token;
+    if (!token || warmingToken === token) return;
+    warmingToken = token;
+    // Two background reads at a time, rather than a burst of Apps Script jobs.
+    await Promise.allSettled([callServer('communityTasks'), callServer('communityReviewQueue')]);
+    let cursor = 0;
+    try {
+      // Warm older history too, but bound work for unusually large accounts.
+      for (let page = 0; page < 20 && state.token === token; page++) {
+        const result = await callServer('memberRequestHistory', cursor);
+        if (result.next_cursor == null || result.next_cursor <= cursor) break;
+        cursor = result.next_cursor;
+      }
+    } catch { /* A failed prefetch can be retried without interrupting sign-in. */ }
+  }
   async function callServer(name, ...args) {
+    if (!cachedReads.has(name)) {
+      const result = await sendServer(name, ...args);
+      if (['submitCatalogueContribution','reviewContribution','setCommunityYear','fundCommunityTask','voteCommunityTask','proposeCommunityTask','requestCatalogueAccess','signOut'].includes(name)) {
+        invalidateViews(); warmingToken = '';
+        if (name !== 'signOut') queueMicrotask(warmViews);
+      }
+      return result;
+    }
+    const token = state.token, epoch = cacheEpoch;
+    const key = token + ':' + name + ':' + JSON.stringify(args);
+    const cached = viewCache.get(key);
+    if (cached && (cached.pending || Date.now() - cached.at < 120000)) return cached.promise;
+    const entry = {at:Date.now(), pending:true};
+    entry.promise = sendServer(name, ...args).then(value => {
+      if (token !== state.token || epoch !== cacheEpoch) throw new Error('Account changed. Please reopen this page.');
+      entry.pending = false; entry.at = Date.now(); return value;
+    }).catch(error => { if (viewCache.get(key) === entry) viewCache.delete(key); throw error; });
+    viewCache.set(key, entry);
+    return entry.promise;
+  }
+  const spinnerMarkup = '<span class="spinner" role="status" aria-label="Please wait"></span>';
+  function busy(element) { element.innerHTML = spinnerMarkup; }
+  async function sendServer(name, ...args) {
     const requests = {
       getCatalogueSnapshot: ['catalogue_snapshot', { session_token: args[0] || '' }],
       getMemberCatalogueState: ['member_catalogue_state', { session_token: args[0] }],
@@ -121,7 +164,10 @@
     requestDialog.showModal();
     return new Promise(resolve => { resolvePendingRequest = resolve; });
   }
-  function setMessage(message) { formMessage.textContent = message || ''; }
+  function setMessage(message) {
+    if (message && /…$/.test(message)) busy(formMessage);
+    else formMessage.textContent = message || '';
+  }
   function showForm(id) {
     forms.forEach(form => { form.hidden = form.id !== id; });
     document.querySelector('#account-home').hidden = Boolean(id) || Boolean(state.member);
@@ -133,6 +179,8 @@
     document.querySelector('.account-name').textContent = signedIn ? 'Your account' : 'Sign in';
     accountBalance.hidden = !signedIn;
     if (signedIn) accountBalance.textContent = coins(state.member.balance_coins) + ' 🪙';
+    document.querySelector('#activity-balance').textContent = signedIn ? coins(state.member.balance_coins) + ' 🪙' : '—';
+    document.querySelector('#activity-email').textContent = signedIn ? state.member.delivery_email || state.member.school_email || '' : '';
   }
   function getExpansionStateKey() {
     return 'smr_catalogue_expansion_v1:' + (state.member && state.member.member_id ? state.member.member_id : state.memberId || 'guest');
@@ -272,7 +320,7 @@
     try {
       if (checkOnly) {
         requestSummary.textContent = node.name;
-        requestDetail.textContent = 'Checking the file’s current Drive permissions…';
+        requestDetail.textContent = state.member.delivery_email || state.member.school_email;
         requestDialog.showModal();
       } else if (!(await confirmRequest(node))) return;
       requestInFlight = true;
@@ -292,7 +340,7 @@
       if (result.status === 'COMPLETED') showToast('Access granted. It is now available in Drive.');
       else if (result.status === 'REPAIRED_COMPLETED_PURCHASE') showToast('Your completed purchase was delivered to Drive. No additional coins were spent.');
       else if (result.status === 'RECORDED_BUT_NOT_ACCESSIBLE') showToast(result.error);
-      else if (result.status === 'ALREADY_OWNED') showToast('You already have Drive access. No coins were spent.');
+      else if (result.status === 'ALREADY_OWNED') showToast('Drive access confirmed for ' + (result.delivery_email || state.member.delivery_email) + '. Open Drive with that account.');
       else showToast(result.error || 'The request could not be completed; your held coins were released.');
       await loadCatalogue();
     } catch (error) {
@@ -312,11 +360,14 @@
     rememberMember(result.member || null);
     const owned = new Set((result.owned_item_ids || []).map(String));
     state.snapshot.nodes = (state.snapshot.nodes || []).map(node => {
-      if (!owned.has(String(node.id))) return node;
-      return { ...node, access: { ...node.access, mode: 'open', is_owned: true }, web_url: ownedFileUrl(node) };
+      const baseAccess = node.baseAccess || node.access;
+      const baseUrl = node.baseUrl === undefined ? node.web_url : node.baseUrl;
+      if (!owned.has(String(node.id))) return {...node, access:baseAccess, web_url:baseUrl, baseAccess, baseUrl};
+      return { ...node, baseAccess, baseUrl, access: { ...baseAccess, mode: 'open', is_owned: true }, web_url: ownedFileUrl(node) };
     });
     updateAccount();
     renderCatalogue();
+    warmViews();
   }
   function createNode(node, depth) {
     if (!matches(node)) return null;
@@ -424,7 +475,7 @@
     localStorage.setItem('smr_public_catalogue_v1', JSON.stringify({ saved_at: Date.now(), snapshot: { nodes: snapshot.nodes || [] } }));
   }
   async function loadCatalogue() {
-    syncStatus.innerHTML = '<span class="status-dot"></span>Syncing';
+    busy(syncStatus);
     try {
       state.snapshot = await callServer('getCatalogueSnapshot', '');
       loadExpansionState();
@@ -467,6 +518,11 @@
   document.querySelector('#sign-out').addEventListener('click', async () => {
     try { await callServer('signOut', state.token); } catch { /* Local sign-out still succeeds. */ }
     state.token = '';
+    invalidateViews(); warmingToken = '';
+    document.querySelector('#history-list').replaceChildren();
+    document.querySelector('#review-list').replaceChildren();
+    document.querySelector('#submission-list').replaceChildren();
+    document.querySelector('#community-list').replaceChildren();
     rememberMember(null);
     localStorage.removeItem('smr_session_token_v1');
     updateAccount();
@@ -525,11 +581,12 @@
     const button = contributionForm.querySelector('button[type=submit]');
     if (button.disabled) return;
     button.disabled = true; button.classList.add('is-loading');
-    contributionMessage.textContent = 'Submitting for review…';
+    contributionMessage.textContent = '';
     try {
       const result = await callServer('submitCatalogueContribution', state.token, state.contributionTargetId, document.querySelector('#contribution-title-input').value, document.querySelector('#contribution-url').value, document.querySelector('#contribution-note').value);
       contributionDialog.close();
       contributionForm.reset();
+      loadReviews();
       showToast(result.duplicate ? 'That contribution is already waiting for review.' : 'Submitted for community review.');
     } catch (error) {
       contributionMessage.textContent = error.message;
@@ -544,8 +601,7 @@
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     button.classList.add('is-loading');
-    button.textContent = 'Signing you in…';
-    setMessage('Signing you in…');
+    setMessage('');
     try {
       const result = await callServer('passwordLogin', document.querySelector('#login-email').value, document.querySelector('#login-password').value);
       state.token = result.session_token;
@@ -553,6 +609,7 @@
       localStorage.setItem('smr_session_token_v1', state.token);
       updateAccount();
       dialog.close();
+      warmViews();
       showToast('Signed in.');
       refreshMemberCatalogueState().catch(error => showToast(error.message));
     } catch (error) { setMessage(error.message); }
@@ -629,7 +686,7 @@
   async function loadCommunityTasks() {
     const status = document.querySelector('#community-status');
     const list = document.querySelector('#community-list');
-    status.textContent = 'Loading tasks…'; list.replaceChildren();
+    busy(status); list.replaceChildren();
     try {
       const result = await callServer('communityTasks');
       status.textContent = result.tasks.length ? '' : 'No tasks yet. Propose something useful for the class.';
@@ -692,7 +749,7 @@
     event.preventDefault();
     const button = event.target.querySelector('button[type=submit]');
     const status = document.querySelector('#task-status');
-    button.disabled = true; status.textContent = 'Saving proposal…';
+    button.disabled = true; busy(status);
     try {
       await callServer('proposeCommunityTask', taskTargetId, document.querySelector('#task-name').value, document.querySelector('#task-note').value);
       taskDialog.close(); showView('tasks');
@@ -710,13 +767,14 @@
     }); return button;
   }
   function showView(view) {
-    if (!['top','contribute','tasks','lending'].includes(view)) view = 'top';
-    for (const id of ['top','contribute','tasks','lending']) document.getElementById(id).hidden = id !== view;
+    if (!['top','contribute','tasks','lending','activity'].includes(view)) view = 'top';
+    for (const id of ['top','contribute','tasks','lending','activity']) document.getElementById(id).hidden = id !== view;
     document.querySelectorAll('[data-view]').forEach(button => { if (button.dataset.view === view) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     search.closest('label').style.visibility = view === 'top' ? '' : 'hidden';
     if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
     if (view === 'tasks') loadCommunityTasks();
     if (view === 'contribute') loadReviews();
+    if (view === 'activity') { historyCursor = 0; loadHistory(); }
   }
   document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
   document.querySelector('.brand').addEventListener('click', () => showView('top'));
@@ -752,14 +810,16 @@
     const input = document.querySelector('#fund-amount');
     // Keep the exact same request reference and amount after an uncertain response.
     fundingRequest ||= {id:crypto.randomUUID(), coins:input.value}; input.disabled = true; button.disabled = true;
-    const status = document.querySelector('#fund-status'); status.textContent = 'Holding your coins for this task…';
+    const status = document.querySelector('#fund-status'); busy(status);
     try { await callServer('fundCommunityTask', fundingTask.id, fundingRequest.coins, fundingRequest.id, false); fundDialog.close(); await refreshMemberCatalogueState(); await loadCommunityTasks(); }
     catch (error) { status.textContent = error.message + ' You can retry this same contribution safely.'; }
     finally { button.disabled = false; }
   };
   async function loadReviews() {
     const status = document.querySelector('#review-status'); const list = document.querySelector('#review-list'); const mine = document.querySelector('#submission-list');
-    list.replaceChildren(); mine.replaceChildren(); status.textContent = 'Loading review queue…';
+    list.replaceChildren(); mine.replaceChildren();
+    if (!state.token) { status.textContent = 'Sign in to submit material and review contributions.'; return; }
+    busy(status);
     try {
       const data = await callServer('communityReviewQueue');
       document.querySelector('#year-form').hidden = Boolean(data.academic_year);
@@ -783,7 +843,13 @@
         list.append(card);
       });
       data.mine.forEach(item => {
-        const row = document.createElement('p'); row.textContent = item.title + ' · ' + item.status;
+        const row = document.createElement('article'); row.className = 'submission-row';
+        const title = document.createElement('h3'); title.textContent = item.title;
+        const badge = document.createElement('span'); badge.className = 'status-chip'; badge.textContent = item.status;
+        row.append(title, badge);
+        if (item.source_url && /^https:\/\//i.test(item.source_url)) {
+          const link = document.createElement('a'); link.href = item.source_url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'View submitted material'; row.append(link);
+        }
         if (item.needs_preparation) row.append(actionButton('Prepare for review', async () => {
           await callServer('submitCatalogueContribution',state.token,item.target_id,item.title,item.source_url,item.note,''); await loadReviews();
         }));
@@ -798,31 +864,48 @@
     catch(error) { showToast(error.message); } finally { button.disabled = false; }
   };
 
-  const historyDialog = document.querySelector('#history-dialog'); let historyCursor = 0;
+  let historyCursor = 0, historyRender = 0;
   async function loadHistory() {
     const status = document.querySelector('#history-status'); const more = document.querySelector('#history-more'); const list = document.querySelector('#history-list');
-    more.disabled = true; status.textContent = 'Loading your requests…';
+    const render = ++historyRender, cursor = historyCursor;
+    if (!state.token) { status.textContent = 'Sign in to see your balance and requests.'; list.replaceChildren(); more.hidden = true; document.querySelector('#activity-balance').textContent = '—'; document.querySelector('#activity-email').textContent = ''; return; }
+    document.querySelector('#activity-balance').textContent = state.member ? coins(state.member.balance_coins) + ' 🪙' : '—';
+    document.querySelector('#activity-email').textContent = state.member?.delivery_email || '';
+    more.disabled = true; busy(status);
     try {
-      const result = await callServer('memberRequestHistory',historyCursor);
-      if (!historyCursor) list.replaceChildren();
+      const result = await callServer('memberRequestHistory',cursor);
+      if (render !== historyRender) return;
+      if (!cursor) list.replaceChildren();
       result.items.forEach(item => {
-        const card = document.createElement('article'); card.className = 'community-task';
+        const card = document.createElement('article'); card.className = 'history-row';
         const title = document.createElement('h3'); title.textContent = item.file;
         const detail = document.createElement('p');
         const date = new Date(item.date); const when = Number.isNaN(date.valueOf()) ? '' : date.toLocaleString();
-        detail.textContent = (item.source === 'legacy' ? 'Imported access record' : 'Website request · ' + coins(item.coins) + ' coins') + ' · ' + String(item.status).toLowerCase() + (when ? ' · ' + when : '');
-        card.append(title,detail); list.append(card);
+        detail.textContent = (item.source === 'legacy' ? 'Imported record' : 'Website request') + ' · ' + String(item.status).toLowerCase() + (when ? ' · ' + when : '');
+        const amount = document.createElement('span'); amount.className = 'history-amount'; amount.textContent = item.coins == null ? '—' : coins(item.coins) + ' 🪙';
+        card.append(title,detail,amount); list.append(card);
       });
       status.textContent = list.children.length ? '' : 'No file requests recorded yet.';
       historyCursor = result.next_cursor; more.hidden = historyCursor === null;
     } catch(error) { status.textContent = error.message; }
     finally { more.disabled = false; }
   }
-  document.querySelector('#show-history').onclick = () => { dialog.close(); historyCursor=0; document.querySelector('#history-list').replaceChildren(); historyDialog.showModal(); loadHistory(); };
+  document.querySelector('#show-history').onclick = () => { dialog.close(); showView('activity'); };
   document.querySelector('#history-more').onclick = loadHistory;
-  document.querySelector('#close-history').onclick = () => historyDialog.close();
+  document.querySelector('#activity-account').onclick = openAccount;
+  document.querySelectorAll('.school-input input').forEach(input => input.addEventListener('input', () => { input.nextElementSibling.hidden = input.value.includes('@'); }));
+  // Scroll inside the rounded surface, never along its outer edge.
+  document.querySelectorAll('dialog.account-dialog').forEach(modal => {
+    const body = document.createElement('div'); body.className = 'dialog-scroll';
+    while (modal.firstChild) body.append(modal.firstChild);
+    modal.append(body);
+  });
 
   loadCachedCatalogue();
+  busy(syncStatus);
+  if (!state.snapshot) busy(tree);
+  warmViews();
+  setInterval(() => { if (state.token && document.visibilityState === 'visible') { warmingToken = ''; warmViews(); } }, 120000);
   loadCatalogue();
   showView(location.hash.slice(1));
 })();
