@@ -59,7 +59,7 @@
     if (!token || warmingToken === token) return;
     warmingToken = token;
     // Two background reads at a time, rather than a burst of Apps Script jobs.
-    await Promise.allSettled([callServer('communityTasks'), callServer('communityReviewQueue')]);
+    await Promise.allSettled([callServer('communityTasks'), callServer('communityReviewQueue'), callServer('getCoinflips')]);
     let cursor = 0;
     try {
       // Warm older history too, but bound work for unusually large accounts.
@@ -124,6 +124,8 @@
       ,createCoinflip: ['create_coinflip', {session_token:state.token,coins:args[0],chosen_side:args[1],request_id:args[2]}]
       ,cancelCoinflip: ['cancel_coinflip', {session_token:state.token,lobby_id:args[0]}]
       ,acceptCoinflip: ['accept_coinflip', {session_token:state.token,lobby_id:args[0]}]
+      ,updateMemberPrivacy: ['update_member_privacy', {session_token:state.token,settings:args[0] || {}}]
+      ,memberProfileSummary: ['member_profile_summary', {session_token:state.token,address:args[0]}]
     };
     const request = requests[name];
     if (!request) throw new Error('Unsupported SMR action.');
@@ -945,6 +947,12 @@
         const detail=document.createElement('p');detail.textContent='Winner receives '+coins(flip.stake_coins*2)+' coins.';
         card.append(title,detail,actionButton('Accept',async()=>{const result=await callServer('acceptCoinflip',flip.id);state.member.balance_coins=result.balance_coins;updateAccount();showToast((result.winner_id===state.member.member_id?'You won ':'Coinflip resolved: ')+result.side+'.');await loadCoinflips();})); list.append(card);
       });
+      (data.mine_open || []).forEach(flip=>{
+        const card=document.createElement('article');card.className='community-task coinflip-card';
+        const title=document.createElement('h3');title.textContent='Your wager · '+coins(flip.stake_coins)+' 🪙 · '+flip.chosen_side;
+        const detail=document.createElement('p');detail.textContent='Open for another member. The 2-coin burn fee is not refunded if cancelled.';
+        card.append(title,detail,actionButton('Cancel wager',async()=>{const result=await callServer('cancelCoinflip',flip.id);state.member.balance_coins=result.balance_coins;updateAccount();showToast('Wager cancelled; stake refunded.');await loadCoinflips();})); list.append(card);
+      });
       data.recent.forEach(flip=>{const row=document.createElement('p');row.className='history-row';row.textContent=coins(flip.stake_coins)+' 🪙 · '+flip.chosen_side+' · '+(flip.winner_id===state.member.member_id?'won':'lost');recent.append(row);});
       if(!data.recent.length) recent.textContent='Your resolved coinflips will appear here.';
     } catch(error) { status.textContent=error.message; }
@@ -952,6 +960,21 @@
   document.querySelector('#create-coinflip').onclick=()=>{if(!state.token)return openAccount();document.querySelector('#coinflip-form').reset();document.querySelector('#coinflip-form-status').textContent='';coinflipDialog.showModal();};
   document.querySelector('#close-coinflip').onclick=()=>coinflipDialog.close();
   document.querySelector('#coinflip-form').onsubmit=async event=>{event.preventDefault();const button=event.currentTarget.querySelector('button');button.disabled=true;button.classList.add('is-loading');try{const result=await callServer('createCoinflip',document.querySelector('#coinflip-stake').value,document.querySelector('#coinflip-side').value,crypto.randomUUID());state.member.balance_coins=result.balance_coins;updateAccount();coinflipDialog.close();showToast('Coinflip created.');await loadCoinflips();}catch(error){document.querySelector('#coinflip-form-status').textContent=error.message;}finally{button.disabled=false;button.classList.remove('is-loading');}};
+
+  const profileDialog=document.querySelector('#profile-dialog');
+  function setPrivacySwitches(privacy) { ['balance','submissions','completed_tasks'].forEach(key=>{ const control=document.querySelector('#privacy-'+key); if(control) control.checked=Boolean(privacy && privacy['show_'+key]); }); }
+  async function openProfile(address) {
+    if(!state.token) return openAccount();
+    const content=document.querySelector('#profile-content'); busy(content); profileDialog.showModal();
+    try { const profile=await callServer('memberProfileSummary',address); content.replaceChildren();
+      const monogram=document.createElement('span');monogram.className='profile-monogram';monogram.textContent=profile.initials;
+      const title=document.createElement('h3');title.textContent=profile.handle; content.append(monogram,title);
+      [['Coin balance',profile.balance_coins==null?null:coins(profile.balance_coins)+' 🪙'],['Submissions',profile.submissions],['Completed tasks',profile.completed_tasks]].forEach(([label,value])=>{if(value!==null){const stat=document.createElement('p');stat.textContent=label+': '+value;content.append(stat);}});
+      if(profile.privacy){ document.querySelector('#privacy-settings').hidden=false; setPrivacySwitches(profile.privacy); } else document.querySelector('#privacy-settings').hidden=true;
+    } catch(error) { content.textContent=error.message; document.querySelector('#privacy-settings').hidden=true; }
+  }
+  document.querySelector('#close-profile').onclick=()=>profileDialog.close();
+  document.querySelector('#privacy-settings').onsubmit=async event=>{event.preventDefault();const button=event.currentTarget.querySelector('button');button.disabled=true;button.classList.add('is-loading');try{await callServer('updateMemberPrivacy',{show_balance:document.querySelector('#privacy-balance').checked,show_submissions:document.querySelector('#privacy-submissions').checked,show_completed_tasks:document.querySelector('#privacy-completed_tasks').checked});showToast('Profile privacy updated.');}catch(error){showToast(error.message);}finally{button.disabled=false;button.classList.remove('is-loading');}};
 
   let historyCursor = 0, historyRender = 0;
   async function loadHistory() {
@@ -1003,7 +1026,7 @@
     try {
       const data = await callServer('chatSnapshot',chatPeer);
       contacts.replaceChildren();
-      data.contacts.forEach(contact => contacts.append(actionButton(contact.label,()=>{chatPeer=contact.id;invalidateViews();return loadChat();})));
+      data.contacts.forEach(contact => { const row=document.createElement('div');row.className='chat-contact';row.append(actionButton(contact.label,()=>{chatPeer=contact.id;invalidateViews();return loadChat();}),actionButton('Profile',()=>openProfile(contact.label)));contacts.append(row); });
       messages.replaceChildren();
       if (!data.peer) { messages.textContent='Choose or open a conversation.'; form.hidden=true; return; }
       chatPeer=data.peer.id; form.hidden=false; form.dataset.peerLabel=data.peer.label;

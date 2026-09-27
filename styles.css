@@ -445,6 +445,11 @@ body { padding-left: 96px; }
 .coinflip-card { display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:20px; border-radius:var(--md-sys-shape-corner-large); background:var(--md-sys-color-surface-container-low); }
 .coinflip-card h3,.coinflip-card p { margin:0; }
 .coinflip-card .tonal-button { margin-left:auto; }
+.profile-summary { display:grid; gap:10px; text-align:center; padding:16px 0; }
+.profile-summary h3,.profile-summary p { margin:0; }
+.profile-monogram { display:grid; place-items:center; width:64px; height:64px; margin:auto; border-radius:50%; background:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container); font-weight:700; font-size:22px; }
+.privacy-switch { display:flex; align-items:center; gap:12px; min-height:48px; cursor:pointer; }
+.privacy-switch input { inline-size:20px; block-size:20px; accent-color:var(--md-sys-color-primary); }
 .coinflip-recent { margin-top:32px; }
 .account-action-card { margin:24px 0 36px; padding:24px; border-radius:var(--md-sys-shape-corner-large); background:var(--md-sys-color-surface-container-lowest); }
 .contributor-profile { margin:0 0 24px; padding:24px; border-radius:var(--md-sys-shape-corner-extra-large); background:var(--md-sys-color-secondary-container); }
@@ -456,6 +461,8 @@ body { padding-left: 96px; }
 .chat-layout { display:grid; grid-template-columns:minmax(220px,300px) minmax(0,1fr); gap:24px; }
 .chat-layout aside,.chat-thread { padding:20px; border-radius:var(--md-sys-shape-corner-large); background:var(--md-sys-color-surface-container-lowest); }
 #chat-contacts { display:grid; gap:8px; margin-top:20px; }
+.chat-contact { display:flex; gap:8px; align-items:center; }
+.chat-contact .tonal-button:first-child { flex:1; justify-content:flex-start; }
 #chat-messages { display:flex; flex-direction:column; gap:10px; min-height:260px; max-height:50vh; overflow:auto; }
 .chat-message { max-width:78%; margin:0; padding:10px 14px; border-radius:18px; background:var(--md-sys-color-surface-container-high); }
 .chat-message.mine { align-self:flex-end; background:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container); }
