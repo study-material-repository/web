@@ -11,6 +11,7 @@
     loginChallengeId: '',
     contributionTargetId: '',
     expandedNodeIds: new Set(),
+    collapsedNodeIds: new Set(),
     expansionStateKey: '',
     contextNodeId: '',
     contextDepth: 0
@@ -51,7 +52,7 @@
 
   const viewCache = new Map();
   let cacheEpoch = 0, warmingToken = '';
-  const cachedReads = new Set(['communityTasks', 'communityReviewQueue', 'memberRequestHistory', 'chatSnapshot', 'communityProfile']);
+  const cachedReads = new Set(['communityTasks', 'communityReviewQueue', 'memberRequestHistory', 'chatSnapshot', 'communityProfile', 'getCoinflips']);
   function invalidateViews() { cacheEpoch++; viewCache.clear(); }
   async function warmViews() {
     const token = state.token;
@@ -72,7 +73,7 @@
   async function callServer(name, ...args) {
     if (!cachedReads.has(name)) {
       const result = await sendServer(name, ...args);
-      if (['submitCatalogueContribution','reviewContribution','setCommunityYear','fundCommunityTask','voteCommunityTask','proposeCommunityTask','requestCatalogueAccess','sendCoins','sendChatMessage','signOut'].includes(name)) {
+      if (['submitCatalogueContribution','reviewContribution','setCommunityYear','fundCommunityTask','voteCommunityTask','proposeCommunityTask','requestCatalogueAccess','sendCoins','sendChatMessage','createCoinflip','cancelCoinflip','acceptCoinflip','signOut'].includes(name)) {
         invalidateViews(); warmingToken = '';
         if (name !== 'signOut') queueMicrotask(warmViews);
       }
@@ -119,15 +120,25 @@
       ,sendChatMessage: ['send_chat_message', {session_token:state.token,recipient:args[0],body:args[1]}]
       ,communityProfile: ['community_profile', {session_token:state.token}]
       ,adminRefreshCatalogue: ['admin_refresh_catalogue', {session_token:state.token}]
+      ,getCoinflips: ['get_coinflips', {session_token:state.token}]
+      ,createCoinflip: ['create_coinflip', {session_token:state.token,coins:args[0],chosen_side:args[1],request_id:args[2]}]
+      ,cancelCoinflip: ['cancel_coinflip', {session_token:state.token,lobby_id:args[0]}]
+      ,acceptCoinflip: ['accept_coinflip', {session_token:state.token,lobby_id:args[0]}]
     };
     const request = requests[name];
     if (!request) throw new Error('Unsupported SMR action.');
-    const response = await fetch(apiUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: request[0], payload: request[1] })
-    });
-    const body = await response.json().catch(() => null);
+    let body = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await fetch(apiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: request[0], payload: request[1] })
+      });
+      body = await response.json().catch(() => null);
+      if (!body || body.ok || body.error !== 'SERVICE_BUSY' || attempt === 2) break;
+      showToast('Server busy, retrying momentarily…');
+      await new Promise(resolve => setTimeout(resolve, 450 * (attempt + 1)));
+    }
     document.querySelectorAll('#account-dialog form[aria-busy="true"]').forEach(form => {
       form.setAttribute('aria-busy','false');
       form.querySelectorAll('.is-loading').forEach(button => { button.disabled = false; button.classList.remove('is-loading'); });
@@ -232,14 +243,16 @@
     state.expansionStateKey = key;
     try {
       const saved = JSON.parse(localStorage.getItem(key) || '[]');
-      state.expandedNodeIds = new Set(Array.isArray(saved) ? saved.map(String) : []);
+      state.expandedNodeIds = new Set(Array.isArray(saved) ? saved.map(String) : (saved.open || []).map(String));
+      state.collapsedNodeIds = new Set(Array.isArray(saved) ? [] : (saved.closed || []).map(String));
     } catch {
       state.expandedNodeIds = new Set();
+      state.collapsedNodeIds = new Set();
       localStorage.removeItem(key);
     }
   }
   function saveExpansionState() {
-    localStorage.setItem(state.expansionStateKey || getExpansionStateKey(), JSON.stringify([...state.expandedNodeIds]));
+    localStorage.setItem(state.expansionStateKey || getExpansionStateKey(), JSON.stringify({open:[...state.expandedNodeIds],closed:[...state.collapsedNodeIds]}));
   }
   function folderById(id) {
     return [...tree.querySelectorAll('.tree-node-folder')].find(element => element.dataset.nodeId === String(id));
@@ -247,14 +260,19 @@
   function snapshotNodeById(id) {
     return ((state.snapshot && state.snapshot.nodes) || []).find(node => String(node.id) === String(id)) || null;
   }
-  function setFolderOpen(folder, open, save) {
+  function setFolderOpen(folder, open, save, explicit) {
     if (!folder) return;
     folder.dataset.open = String(open);
     folder.setAttribute('aria-expanded', String(open));
     const toggle = folder.querySelector(':scope > .tree-row .tree-toggle');
     if (toggle) toggle.setAttribute('aria-label', (open ? 'Collapse ' : 'Expand ') + (folder.querySelector('.tree-label') || {}).textContent);
-    if (open) state.expandedNodeIds.add(folder.dataset.nodeId);
-    else state.expandedNodeIds.delete(folder.dataset.nodeId);
+    if (open) { state.expandedNodeIds.add(folder.dataset.nodeId); if (explicit) state.collapsedNodeIds.delete(folder.dataset.nodeId); }
+    else { state.expandedNodeIds.delete(folder.dataset.nodeId); if (explicit) state.collapsedNodeIds.add(folder.dataset.nodeId); }
+    if (open && explicit && folder.dataset.unit === 'true') {
+      tree.querySelectorAll('.tree-node-folder').forEach(child => {
+        if (child.dataset.parentId === folder.dataset.nodeId && !state.collapsedNodeIds.has(child.dataset.nodeId)) setFolderOpen(child, true, false, false);
+      });
+    }
     if (save !== false) saveExpansionState();
   }
   function setFoldersAtDepth(depth, open) {
@@ -411,8 +429,10 @@
     wrapper.className = 'tree-node tree-node-' + (isFolder ? 'folder' : 'file');
     wrapper.dataset.nodeId = String(node.id);
     wrapper.dataset.depth = String(depth);
+    wrapper.dataset.parentId = String(node.parent_id || '');
+    wrapper.dataset.unit = String(isFolder && /\b(?:CSC|SCS|ICT)\s*\d{3}\b/i.test(String(node.name)));
     wrapper.style.setProperty('--depth', depth);
-    const shouldOpen = Boolean(state.query) || depth === 0 || state.expandedNodeIds.has(String(node.id));
+    const shouldOpen = Boolean(state.query) || (depth === 0 && !state.collapsedNodeIds.has(String(node.id))) || state.expandedNodeIds.has(String(node.id));
     wrapper.dataset.open = String(shouldOpen);
     wrapper.setAttribute('role', 'treeitem');
     if (isFolder) wrapper.setAttribute('aria-expanded', String(shouldOpen));
@@ -426,7 +446,7 @@
       toggle.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">expand_more</span>';
       toggle.addEventListener('click', () => {
         const open = wrapper.dataset.open === 'true';
-        setFolderOpen(wrapper, !open);
+        setFolderOpen(wrapper, !open, true, true);
       });
       row.append(toggle);
     } else {
@@ -818,6 +838,7 @@
     if (view === 'contribute') { loadReviews(); loadCommunityTasks(); }
     if (view === 'activity') { historyCursor = 0; loadHistory(); loadCommunityProfile(); }
     if (view === 'chat') loadChat();
+    if (view === 'lending') loadCoinflips();
   }
   document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
   document.querySelector('.brand').addEventListener('click', () => showView('top'));
@@ -909,6 +930,28 @@
     try { await callServer('setCommunityYear',document.querySelector('#review-year').value); await loadReviews(); }
     catch(error) { showToast(error.message); } finally { button.disabled = false; }
   };
+
+  const coinflipDialog = document.querySelector('#coinflip-dialog');
+  async function loadCoinflips() {
+    const status=document.querySelector('#coinflip-status'), list=document.querySelector('#coinflip-list'), recent=document.querySelector('#coinflip-recent');
+    list.replaceChildren(); recent.replaceChildren();
+    if (!state.token) { status.textContent='Sign in to create or accept a coinflip.'; return; }
+    busy(status);
+    try {
+      const data=await callServer('getCoinflips'); status.textContent=data.open.length?'':'No open coinflips right now.';
+      data.open.forEach(flip=>{
+        const card=document.createElement('article');card.className='community-task coinflip-card';
+        const title=document.createElement('h3');title.textContent=coins(flip.stake_coins)+' 🪙 · '+flip.chosen_side;
+        const detail=document.createElement('p');detail.textContent='Winner receives '+coins(flip.stake_coins*2)+' coins.';
+        card.append(title,detail,actionButton('Accept',async()=>{const result=await callServer('acceptCoinflip',flip.id);state.member.balance_coins=result.balance_coins;updateAccount();showToast((result.winner_id===state.member.member_id?'You won ':'Coinflip resolved: ')+result.side+'.');await loadCoinflips();})); list.append(card);
+      });
+      data.recent.forEach(flip=>{const row=document.createElement('p');row.className='history-row';row.textContent=coins(flip.stake_coins)+' 🪙 · '+flip.chosen_side+' · '+(flip.winner_id===state.member.member_id?'won':'lost');recent.append(row);});
+      if(!data.recent.length) recent.textContent='Your resolved coinflips will appear here.';
+    } catch(error) { status.textContent=error.message; }
+  }
+  document.querySelector('#create-coinflip').onclick=()=>{if(!state.token)return openAccount();document.querySelector('#coinflip-form').reset();document.querySelector('#coinflip-form-status').textContent='';coinflipDialog.showModal();};
+  document.querySelector('#close-coinflip').onclick=()=>coinflipDialog.close();
+  document.querySelector('#coinflip-form').onsubmit=async event=>{event.preventDefault();const button=event.currentTarget.querySelector('button');button.disabled=true;button.classList.add('is-loading');try{const result=await callServer('createCoinflip',document.querySelector('#coinflip-stake').value,document.querySelector('#coinflip-side').value,crypto.randomUUID());state.member.balance_coins=result.balance_coins;updateAccount();coinflipDialog.close();showToast('Coinflip created.');await loadCoinflips();}catch(error){document.querySelector('#coinflip-form-status').textContent=error.message;}finally{button.disabled=false;button.classList.remove('is-loading');}};
 
   let historyCursor = 0, historyRender = 0;
   async function loadHistory() {
