@@ -126,6 +126,7 @@
       ,acceptCoinflip: ['accept_coinflip', {session_token:state.token,lobby_id:args[0]}]
       ,updateMemberPrivacy: ['update_member_privacy', {session_token:state.token,settings:args[0] || {}}]
       ,memberProfileSummary: ['member_profile_summary', {session_token:state.token,address:args[0]}]
+      ,adminDriveAction: ['admin_drive_action', {session_token:state.token,action_name:args[0],drive_item_id:args[1],name:args[2] || '',email:args[3] || '',role:args[4] || '',source_drive_item_id:args[5] || ''}]
     };
     const request = requests[name];
     if (!request) throw new Error('Unsupported SMR action.');
@@ -304,6 +305,8 @@
     treeMenuToggle.hidden = !isFolder;
     document.querySelector('#tree-menu-collapse-level').hidden = !isFolder;
     document.querySelector('#tree-menu-expand-level').hidden = !isFolder;
+    const adminManage=document.querySelector('#tree-menu-admin');
+    adminManage.hidden = !(state.member && state.member.is_admin && node);
     if (isFolder) {
       const isOpen = nodeElement.dataset.open === 'true';
       treeMenuToggle.querySelector('span:last-child').textContent = isOpen ? 'Collapse this folder' : 'Expand this folder';
@@ -627,6 +630,18 @@
   });
   document.querySelector('#tree-menu-collapse-level').addEventListener('click', () => { setFoldersAtDepth(state.contextDepth, false); hideTreeMenu(); });
   document.querySelector('#tree-menu-expand-level').addEventListener('click', () => { setFoldersAtDepth(state.contextDepth, true); hideTreeMenu(); });
+  const adminDriveDialog=document.querySelector('#admin-drive-dialog');
+  document.querySelector('#tree-menu-admin').addEventListener('click',()=>{const node=snapshotNodeById(state.contextNodeId);hideTreeMenu();if(!node)return;document.querySelector('#admin-drive-node').textContent=cataloguePathFor(node);document.querySelector('#admin-drive-name').value=node.name;document.querySelector('#admin-drive-actions').hidden=false;document.querySelector('#admin-drive-create').hidden=node.kind!=='folder';document.querySelector('#admin-drive-copy').hidden=node.kind!=='folder';document.querySelector('#admin-drive-status').textContent='';adminDriveDialog.dataset.nodeId=node.id;adminDriveDialog.dataset.nodeKind=node.kind;adminDriveDialog.showModal();});
+  document.querySelector('#close-admin-drive').onclick=()=>adminDriveDialog.close();
+  async function adminDriveRun(action) { const id=adminDriveDialog.dataset.nodeId,status=document.querySelector('#admin-drive-status');busy(status);try { const name=document.querySelector('#admin-drive-name').value,email=document.querySelector('#admin-drive-email').value,role=document.querySelector('#admin-drive-role').value,source=document.querySelector('#admin-drive-source').value;const result=await callServer('adminDriveAction',action,id,name,email,role,source);status.textContent=action==='permissions'?result.people.map(p=>p.email+' · '+p.role).join('\n')||'No direct viewers or editors.':action==='trash'?'Moved to Drive trash.':'Saved to Drive.';await loadCatalogue();}catch(error){status.textContent=error.message;}}
+  document.querySelector('#admin-drive-rename').onclick=()=>adminDriveRun('rename');
+  document.querySelector('#admin-drive-create').onclick=()=>adminDriveRun('create_folder');
+  document.querySelector('#admin-drive-copy').onclick=()=>adminDriveRun('copy_file');
+  document.querySelector('#admin-drive-shortcut').onclick=()=>adminDriveRun('create_shortcut');
+  document.querySelector('#admin-drive-grant').onclick=()=>adminDriveRun('grant');
+  document.querySelector('#admin-drive-revoke').onclick=()=>adminDriveRun('revoke');
+  document.querySelector('#admin-drive-permissions').onclick=()=>adminDriveRun('permissions');
+  document.querySelector('#admin-drive-trash').onclick=()=>{if(confirm('Move this item to Drive trash? It can be restored from Drive.'))adminDriveRun('trash');};
   document.addEventListener('pointerdown', event => { if (!treeMenu.hidden && !treeMenu.contains(event.target)) hideTreeMenu(); });
   window.addEventListener('resize', hideTreeMenu);
   window.addEventListener('scroll', hideTreeMenu, true);
