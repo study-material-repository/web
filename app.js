@@ -127,6 +127,11 @@
       ,updateMemberPrivacy: ['update_member_privacy', {session_token:state.token,settings:args[0] || {}}]
       ,memberProfileSummary: ['member_profile_summary', {session_token:state.token,address:args[0]}]
       ,adminDriveAction: ['admin_drive_action', {session_token:state.token,action_name:args[0],drive_item_id:args[1],name:args[2] || '',email:args[3] || '',role:args[4] || '',source_drive_item_id:args[5] || ''}]
+      ,adminPaste: ['admin_drive_action',{session_token:state.token,action_name:'paste',drive_item_id:args[0],source_drive_item_id:args[1],mode:args[2]}]
+      ,adminCascade: ['admin_drive_action',{session_token:state.token,action_name:'cascade',drive_item_id:args[0],enabled:args[1]}]
+      ,chatHub: ['chat_hub',{...args[0],session_token:state.token}]
+      ,chatSpace: ['chat_space',{...args[0],session_token:state.token}]
+      ,chatSend: ['chat_send',{...args[0],session_token:state.token}]
     };
     const request = requests[name];
     if (!request) throw new Error('Unsupported SMR action.');
@@ -276,6 +281,9 @@
         if (child.dataset.parentId === folder.dataset.nodeId && !state.collapsedNodeIds.has(child.dataset.nodeId)) setFolderOpen(child, true, false, false);
       });
     }
+    if(open && explicit && snapshotNodeById(folder.dataset.nodeId)?.expand_descendants) {
+      folder.querySelectorAll('.tree-node-folder').forEach(child=>setFolderOpen(child,true,false,false));
+    }
     if (save !== false) saveExpansionState();
   }
   function setFoldersAtDepth(depth, open) {
@@ -294,6 +302,7 @@
     state.contextDepth = Number(nodeElement.dataset.depth);
     const isFolder = nodeElement.classList.contains('tree-node-folder');
     const node = snapshotNodeById(state.contextNodeId);
+    state.selectedNodeId=state.contextNodeId;
     treeMenuOpen.hidden = !node || isFolder || !node.web_url;
     treeMenuRequest.hidden = !node || isFolder;
     if (!treeMenuRequest.hidden) {
@@ -307,6 +316,7 @@
     document.querySelector('#tree-menu-expand-level').hidden = !isFolder;
     const adminManage=document.querySelector('#tree-menu-admin');
     adminManage.hidden = !(state.member && state.member.is_admin && node);
+    updateDriveMenu(node);
     if (isFolder) {
       const isOpen = nodeElement.dataset.open === 'true';
       treeMenuToggle.querySelector('span:last-child').textContent = isOpen ? 'Collapse this folder' : 'Expand this folder';
@@ -369,6 +379,20 @@
     const ownText = [node.name, ...(node.announcements || []).map(item => item.message)].join(' ').toLowerCase();
     return !state.query || ownText.includes(state.query) || node.children.some(matches);
   }
+  const searchPanel=document.createElement('section');searchPanel.className='search-results';searchPanel.hidden=true;searchPanel.setAttribute('aria-label','Search results');searchPanel.setAttribute('aria-live','polite');document.querySelector('#top').prepend(searchPanel);
+  let searchKind='all';
+  function renderSearch(){
+    const query=search.value.trim();searchPanel.hidden=!query;document.querySelector('.catalogue-card').hidden=Boolean(query);if(!query)return;
+    searchPanel.replaceChildren();const heading=document.createElement('div');heading.className='workspace-heading';const title=document.createElement('h1');title.textContent='Search results';heading.append(title,actionButton('Clear',()=>{search.value='';renderSearch();search.focus();}));searchPanel.append(heading);
+    const filters=document.createElement('div');filters.className='search-filters';['all','file','folder'].forEach(kind=>{const button=actionButton(kind==='all'?'All':kind==='file'?'Files':'Folders',()=>{searchKind=kind;renderSearch();});button.setAttribute('aria-pressed',String(searchKind===kind));filters.append(button);});searchPanel.append(filters);
+    const nodes=(state.snapshot?.nodes||[]).filter(node=>searchKind==='all'||(searchKind==='folder'?node.kind==='folder':node.kind!=='folder'));
+    SmrSearch.queries(query).slice(0,30).forEach(part=>{const group=document.createElement('section');group.className='search-group';const subtitle=document.createElement('h2');subtitle.textContent=part;group.append(subtitle);const results=SmrSearch.rank(nodes,part,cataloguePathFor);
+      if(!results.length){const empty=document.createElement('p');empty.textContent='No matching material. Try the course name or code with a different date.';group.append(empty);}
+      results.forEach(({node,path})=>{const card=document.createElement('article');card.className='search-result';const name=document.createElement('h3');name.textContent=node.name;const detail=document.createElement('p');detail.textContent=path;card.append(name,detail);
+        card.append(actionButton(node.kind==='folder'?'Browse folder':node.access.mode==='requestable'?'Request file':'Open file',()=>{if(node.kind==='folder')return browseSearchFolder(node);if(node.access.mode==='requestable')return requestAccess(node);if(node.web_url)window.open(node.web_url,'_blank','noopener');else requestAccess(node,true);}));group.append(card);});searchPanel.append(group);
+    });
+  }
+  function browseSearchFolder(folder){searchPanel.replaceChildren();const heading=document.createElement('div');heading.className='workspace-heading';const title=document.createElement('h2');title.textContent=folder.name;heading.append(title,actionButton('Back to results',renderSearch));searchPanel.append(heading);const children=state.snapshot.nodes.filter(node=>String(node.parent_id)===String(folder.id));if(!children.length){const empty=document.createElement('p');empty.textContent='This folder is empty.';searchPanel.append(empty);}children.forEach(node=>{const card=document.createElement('article');card.className='search-result';const title=document.createElement('h3');title.textContent=node.name;card.append(title,actionButton(node.kind==='folder'?'Browse folder':node.access.mode==='requestable'?'Request file':'Open file',()=>{if(node.kind==='folder')browseSearchFolder(node);else if(node.access.mode==='requestable')requestAccess(node);else if(node.web_url)window.open(node.web_url,'_blank','noopener');else requestAccess(node,true);}));searchPanel.append(card);});}
   async function requestAccess(node, checkOnly = false) {
     if (!state.member) {
       openAccount();
@@ -483,6 +507,9 @@
       });
     }
     row.append(label);
+    const more=document.createElement('button');more.type='button';more.className='icon-button node-more';more.setAttribute('aria-label','Actions for '+node.name);more.innerHTML='<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>';
+    more.onclick=event=>{event.stopPropagation();const rect=more.getBoundingClientRect();showTreeMenu({preventDefault(){},clientX:rect.left,clientY:rect.bottom},wrapper);};row.append(more);
+    row.addEventListener('click',()=>{state.selectedNodeId=String(node.id);tree.querySelectorAll('.tree-row.selected').forEach(el=>el.classList.remove('selected'));row.classList.add('selected');});
     if (node.coin_marked) {
       const coin = document.createElement('span');
       coin.className = 'tree-coin';
@@ -519,6 +546,7 @@
       if (element) { tree.append(element); count += 1; }
     });
     emptyState.hidden = count !== 0;
+    renderSearch();
   }
   function loadCachedCatalogue() {
     try {
@@ -595,8 +623,7 @@
     loadCatalogue();
   });
   search.addEventListener('input', event => {
-    state.query = event.target.value.trim().toLowerCase();
-    if (state.snapshot) renderCatalogue();
+    renderSearch();
   });
   document.querySelector('#expand-all').addEventListener('click', () => tree.querySelectorAll('.tree-node-folder').forEach(node => {
     setFolderOpen(node, true, false);
@@ -631,13 +658,21 @@
   document.querySelector('#tree-menu-collapse-level').addEventListener('click', () => { setFoldersAtDepth(state.contextDepth, false); hideTreeMenu(); });
   document.querySelector('#tree-menu-expand-level').addEventListener('click', () => { setFoldersAtDepth(state.contextDepth, true); hideTreeMenu(); });
   const adminDriveDialog=document.querySelector('#admin-drive-dialog');
+  let driveClipboard=null,pasting=false;
+  ['copy','cut','paste','cascade'].forEach(action=>{const button=document.createElement('button');button.id='tree-'+action;button.type='button';button.setAttribute('role','menuitem');button.textContent=({copy:'Copy',cut:'Cut',paste:'Paste',cascade:'Expand all subfolders for everyone'})[action];treeMenu.append(button);button.onclick=()=>{const node=snapshotNodeById(state.contextNodeId);hideTreeMenu();if(!node)return;if(action==='copy'||action==='cut')setDriveClipboard(node,action);else if(action==='paste')pasteDrive(node);else setCascade(node);};});
+  function updateDriveMenu(node){const admin=Boolean(state.member?.is_admin);['copy','cut','paste','cascade'].forEach(action=>{const button=document.querySelector('#tree-'+action);if(!button)return;button.hidden=!admin||!node||(['paste','cascade'].includes(action)&&node.kind!=='folder');button.disabled=(action==='copy'&&node?.kind==='folder')||(action==='paste'&&(!driveClipboard||pasting));});const button=document.querySelector('#tree-cascade');if(button)button.textContent=node?.expand_descendants?'Stop automatic subfolder expansion':'Expand all subfolders for everyone';}
+  function setDriveClipboard(node,mode){if(!state.member?.is_admin)return;if(mode==='copy'&&node.kind==='folder')return showToast('Folders can be cut and moved; select a file to copy.');driveClipboard={id:node.id,name:node.name,mode,member:state.member.member_id};tree.querySelectorAll('.is-cut').forEach(el=>el.classList.remove('is-cut'));if(mode==='cut')folderOrFile(node.id)?.classList.add('is-cut');showToast(node.name+' '+(mode==='cut'?'ready to move.':'copied.')+' Choose a folder and paste.');}
+  function folderOrFile(id){return [...tree.querySelectorAll('.tree-node')].find(el=>el.dataset.nodeId===String(id));}
+  async function pasteDrive(node){if(!state.member?.is_admin||!driveClipboard||pasting)return;if(node.kind!=='folder')return showToast('Select a destination folder first.');if(driveClipboard.member!==state.member.member_id){driveClipboard=null;return;}pasting=true;showToast('Saving to Drive…');try{await callServer('adminPaste',node.id,driveClipboard.id,driveClipboard.mode);if(driveClipboard.mode==='cut')driveClipboard=null;await loadCatalogue();showToast('Saved to '+node.name+'.');}catch(error){showToast(error.message);}finally{pasting=false;}}
+  async function setCascade(node){try{await callServer('adminCascade',node.id,!node.expand_descendants);node.expand_descendants=!node.expand_descendants;savePublicCatalogue(state.snapshot);showToast(node.expand_descendants?'Opening this folder will expand all subfolders for everyone.':'Automatic expansion removed.');}catch(error){showToast(error.message);}}
+  document.addEventListener('keydown',event=>{if(!state.member?.is_admin||!(event.ctrlKey||event.metaKey)||event.target.closest('input,textarea,[contenteditable="true"]')||document.querySelector('dialog[open]'))return;const node=snapshotNodeById(state.selectedNodeId);if(!node||document.querySelector('#top').hidden)return;const key=event.key.toLowerCase();if(['c','x','v'].includes(key)){event.preventDefault();if(key==='v')pasteDrive(node);else setDriveClipboard(node,key==='c'?'copy':'cut');}});
   document.querySelector('#tree-menu-admin').addEventListener('click',()=>{const node=snapshotNodeById(state.contextNodeId);hideTreeMenu();if(!node)return;document.querySelector('#admin-drive-node').textContent=cataloguePathFor(node);document.querySelector('#admin-drive-name').value=node.name;document.querySelector('#admin-drive-actions').hidden=false;document.querySelector('#admin-drive-create').hidden=node.kind!=='folder';document.querySelector('#admin-drive-copy').hidden=node.kind!=='folder';document.querySelector('#admin-drive-status').textContent='';adminDriveDialog.dataset.nodeId=node.id;adminDriveDialog.dataset.nodeKind=node.kind;adminDriveDialog.showModal();});
   document.querySelector('#close-admin-drive').onclick=()=>adminDriveDialog.close();
   async function adminDriveRun(action) { const id=adminDriveDialog.dataset.nodeId,status=document.querySelector('#admin-drive-status');busy(status);try { const name=document.querySelector('#admin-drive-name').value,email=document.querySelector('#admin-drive-email').value,role=document.querySelector('#admin-drive-role').value,source=document.querySelector('#admin-drive-source').value;const result=await callServer('adminDriveAction',action,id,name,email,role,source);status.textContent=action==='permissions'?result.people.map(p=>p.email+' · '+p.role).join('\n')||'No direct viewers or editors.':action==='trash'?'Moved to Drive trash.':'Saved to Drive.';await loadCatalogue();}catch(error){status.textContent=error.message;}}
   document.querySelector('#admin-drive-rename').onclick=()=>adminDriveRun('rename');
   document.querySelector('#admin-drive-create').onclick=()=>adminDriveRun('create_folder');
-  document.querySelector('#admin-drive-copy').onclick=()=>adminDriveRun('copy_file');
-  document.querySelector('#admin-drive-shortcut').onclick=()=>adminDriveRun('create_shortcut');
+  document.querySelector('#admin-drive-copy').style.display='none';
+  document.querySelector('#admin-drive-shortcut').style.display='none';
   document.querySelector('#admin-drive-grant').onclick=()=>adminDriveRun('grant');
   document.querySelector('#admin-drive-revoke').onclick=()=>adminDriveRun('revoke');
   document.querySelector('#admin-drive-permissions').onclick=()=>adminDriveRun('permissions');
@@ -854,7 +889,7 @@
     if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
     if (view === 'contribute') { loadReviews(); loadCommunityTasks(); }
     if (view === 'activity') { historyCursor = 0; loadHistory(); loadCommunityProfile(); }
-    if (view === 'chat') loadChat();
+    if (view === 'chat') chatUi.load();
     if (view === 'lending') loadCoinflips();
   }
   document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
@@ -1063,6 +1098,7 @@
     modal.append(body);
   });
 
+  const chatUi=window.setupSmrChat({state,callServer,showToast,openAccount});
   loadCachedCatalogue();
   busy(syncStatus);
   if (!state.snapshot) busy(tree);
