@@ -8,7 +8,7 @@
     if(m){const month=months.findIndex(n=>n===m[2]||n.slice(0,3)===m[2]);if(month>=0)return [Number(m[3]),month+1,Number(m[1])];}
     return null;
   }
-  function queries(text){return String(text).split(/[\n\r\uFFFC]+|\s*[-•]\s*(?=[a-zA-Z])/).map(s=>s.trim()).filter(s=>s&&!/^\d(?:st|nd|rd|th)?$/i.test(s));}
+  function queries(text){return String(text).split(/[;\n\r\uFFFC]+|\s*[-•]\s*(?=[a-zA-Z])/).map(s=>s.trim()).filter(s=>s&&!/^\d(?:st|nd|rd|th)?$/i.test(s));}
   function rank(nodes,text,pathFor){
     const date=dateOf(text), clean=normalize(text);
     const words=clean.split(' ').filter(w=>w&&!/^\d+$/.test(w)&&!months.some(m=>m===w||m.slice(0,3)===w)&&!['and','of','the','for','in'].includes(w));

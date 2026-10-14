@@ -625,6 +625,7 @@
   search.addEventListener('input', event => {
     renderSearch();
   });
+  search.addEventListener('paste',event=>{const text=event.clipboardData?.getData('text');if(text&&/[\n\r\uFFFC]/.test(text)){event.preventDefault();search.value=text.replace(/[\n\r\uFFFC]+/g,'; ');renderSearch();}});
   document.querySelector('#expand-all').addEventListener('click', () => tree.querySelectorAll('.tree-node-folder').forEach(node => {
     setFolderOpen(node, true, false);
   }));
