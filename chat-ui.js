@@ -14,6 +14,7 @@ window.setupSmrChat=function({state,callServer,showToast,openAccount}){
     if(!state.token){$('chat-error').textContent='Sign in to use chat.';return;}
     const epoch=++generation,token=state.token,target=selected?{[selected.kind==='space'?'space_id':'peer']:selected.id}:{};
     readsInFlight++;
+    $('chat-error').innerHTML='<span class="spinner" role="status" aria-label="Loading chat"></span>';
     try{const data=await callServer('chatHub',{...target,mark_read:document.visibilityState==='visible'&&!host.hidden});if(epoch!==generation||token!==state.token)return;$('chat-error').textContent='';
       [['dm-list',data.contacts,'dm'],['space-list',data.spaces,'space']].forEach(([id,items,kind])=>{const list=$(id);list.replaceChildren();items.forEach(item=>{const b=button(item.label+(item.unread?' · '+item.unread:''),()=>select({kind,id:item.id}));if(selected?.id===item.id)b.setAttribute('aria-current','true');list.append(b);});if(!items.length){const p=document.createElement('p');p.className='dialog-copy';p.textContent=kind==='space'?'Create a space for your class or study group.':'Start a conversation.';list.append(p);}});
       host.classList.toggle('thread-open',Boolean(data.thread));

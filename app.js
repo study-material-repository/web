@@ -185,7 +185,7 @@
       : node.name + ' — ' + coins(Number(node.access.price_millis || 0) / 1000) + ' 🪙';
     requestDetail.textContent = checkingOwnedFile
       ? 'We will verify your completed website purchase. No coins are spent for this check.'
-      : 'You will receive access to this file in Drive immediately.';
+      : 'We will check your balance and grant Drive access if you have enough coins. Confirming spends the price shown only if the request succeeds.';
     requestConfirm.textContent = checkingOwnedFile ? 'Check access' : 'Request access';
     setRequestProgress('', false);
     requestDialog.showModal();
@@ -303,11 +303,11 @@
     const isFolder = nodeElement.classList.contains('tree-node-folder');
     const node = snapshotNodeById(state.contextNodeId);
     state.selectedNodeId=state.contextNodeId;
-    treeMenuOpen.hidden = !node || isFolder || !node.web_url;
+    treeMenuOpen.hidden = true;
     treeMenuRequest.hidden = !node || isFolder;
     if (!treeMenuRequest.hidden) {
-      treeMenuRequest.querySelector('span:last-child').textContent = node.access.mode === 'requestable' ? 'Request this file' : 'Check Drive access';
-      treeMenuRequest.querySelector('.material-symbols-outlined').textContent = node.access.is_owned ? 'verified_user' : 'add_shopping_cart';
+      treeMenuRequest.querySelector('span:last-child').textContent = 'Open file';
+      treeMenuRequest.querySelector('.material-symbols-outlined').textContent = 'open_in_new';
     }
     document.querySelector('#tree-menu-contribute').hidden = !isFolder;
     document.querySelector('#tree-menu-task').hidden = !isFolder;
@@ -397,12 +397,14 @@
     SmrSearch.queries(query).slice(0,30).forEach(part=>{const group=document.createElement('section');group.className='search-group';const subtitle=document.createElement('h2');subtitle.textContent=part;group.append(subtitle);const results=SmrSearch.rank(nodes,part,cataloguePathFor);
       if(!results.length){const empty=document.createElement('p');empty.textContent='No matching material. Try the course name or code with a different date.';group.append(empty);}
       results.forEach(({node,path})=>{const card=document.createElement('article');card.className='search-result';const name=document.createElement('h3');name.textContent=node.name;const detail=document.createElement('p');detail.textContent=path;card.append(name,detail);
-        card.append(actionButton(node.kind==='folder'?'Browse folder':node.access.mode==='requestable'?'Request file':'Open file',()=>{if(node.kind==='folder')return browseSearchFolder(node);if(node.access.mode==='requestable')return requestAccess(node);if(node.web_url)window.open(node.web_url,'_blank','noopener');else requestAccess(node,true);}));group.append(card);});searchPanel.append(group);
+        card.append(actionButton(node.kind==='folder'?'Browse folder':'Open file',()=>{if(node.kind==='folder')return browseSearchFolder(node);return requestAccess(node,true);}));group.append(card);});searchPanel.append(group);
     });
   }
-  function browseSearchFolder(folder){searchPanel.replaceChildren();const heading=document.createElement('div');heading.className='workspace-heading';const title=document.createElement('h2');title.textContent=folder.name;heading.append(title,actionButton('Back to results',renderSearch));searchPanel.append(heading);const children=state.snapshot.nodes.filter(node=>String(node.parent_id)===String(folder.id));if(!children.length){const empty=document.createElement('p');empty.textContent='This folder is empty.';searchPanel.append(empty);}children.forEach(node=>{const card=document.createElement('article');card.className='search-result';const title=document.createElement('h3');title.textContent=node.name;card.append(title,actionButton(node.kind==='folder'?'Browse folder':node.access.mode==='requestable'?'Request file':'Open file',()=>{if(node.kind==='folder')browseSearchFolder(node);else if(node.access.mode==='requestable')requestAccess(node);else if(node.web_url)window.open(node.web_url,'_blank','noopener');else requestAccess(node,true);}));searchPanel.append(card);});}
+  function browseSearchFolder(folder){searchPanel.replaceChildren();const heading=document.createElement('div');heading.className='workspace-heading';const title=document.createElement('h2');title.textContent=folder.name;heading.append(title,actionButton('Back to results',renderSearch));searchPanel.append(heading);const children=state.snapshot.nodes.filter(node=>String(node.parent_id)===String(folder.id));if(!children.length){const empty=document.createElement('p');empty.textContent='This folder is empty.';searchPanel.append(empty);}children.forEach(node=>{const card=document.createElement('article');card.className='search-result';const title=document.createElement('h3');title.textContent=node.name;card.append(title,actionButton(node.kind==='folder'?'Browse folder':'Open file',()=>{if(node.kind==='folder')browseSearchFolder(node);else requestAccess(node,true);}));searchPanel.append(card);});}
   async function requestAccess(node, checkOnly = false) {
+    if (requestInFlight || resolvePendingRequest) return;
     if (!state.member) {
+      if(node.access?.mode==='open'&&node.web_url){window.open(node.web_url,'_blank','noopener');return;}
       openAccount();
       setMessage('Sign in first, then request this item.');
       return;
@@ -432,7 +434,17 @@
       else if (result.status === 'RECORDED_BUT_NOT_ACCESSIBLE') showToast(result.error);
       else if (result.status === 'ALREADY_OWNED') showToast('Drive access confirmed for ' + (result.delivery_email || state.member.delivery_email) + '. Open Drive with that account.');
       else showToast(result.error || 'The request could not be completed; your held coins were released.');
-      await loadCatalogue();
+      if (['COMPLETED','ALREADY_OWNED','REPAIRED_COMPLETED_PURCHASE'].includes(result.status)) {
+        node.web_url=ownedFileUrl(node);
+        requestSummary.textContent=node.name;
+        requestDetail.textContent='Access confirmed for '+(result.delivery_email||state.member.delivery_email)+'.';
+        requestConfirm.textContent='Open file';requestCancel.textContent='Close';
+        requestDialog.showModal();
+        const open=await new Promise(resolve=>{resolvePendingRequest=resolve;});
+        requestDialog.close();requestCancel.textContent='Cancel';
+        if(open)window.open(node.web_url,'_blank','noopener');
+      }
+      refreshMemberCatalogueState().catch(()=>{});
     } catch (error) {
       requestInFlight = false;
       setRequestProgress('', false);
@@ -502,16 +514,13 @@
     const isLockedFolder = node.access.mode === 'locked_folder';
     const isAction = !isFolder || requiresAccess || needsConfiguration;
     const label = document.createElement(isAction ? 'button' : 'span');
-    label.className = 'tree-label' + (isAction ? ' tree-link' : '') + ((requiresAccess || needsConfiguration || isLockedFolder) ? ' tree-link-restricted' : '');
+    label.className = 'tree-label' + (isAction ? ' tree-link' : '');
     label.textContent = String(node.name).replace(' 🪙', '');
     if (isAction) {
       label.type = 'button';
       label.title = requiresAccess ? 'Request access with coins' : needsConfiguration ? 'This coin-marked material is not configured for website requests yet' : 'Open ' + node.name;
       label.addEventListener('click', () => {
-        if (requiresAccess) return requestAccess(node);
-        if (needsConfiguration) return showToast('This coin-marked material is not priced for website requests yet.');
-        if (!node.web_url) return showToast('Refreshing the latest catalogue…');
-        window.open(node.web_url, '_blank', 'noopener');
+        return requestAccess(node,true);
       });
     }
     row.append(label);
@@ -562,7 +571,7 @@
   function loadCachedCatalogue() {
     try {
       const cached = JSON.parse(localStorage.getItem('smr_public_catalogue_v1') || 'null');
-      if (!cached || !cached.saved_at || Date.now() - cached.saved_at > 6 * 60 * 60 * 1000) return;
+      if (!cached || !cached.saved_at || !Array.isArray(cached.snapshot?.nodes)) return;
       state.snapshot = cached.snapshot;
       renderCatalogue();
       syncStatus.innerHTML = '<span class="status-dot"></span>Refreshing';
@@ -571,10 +580,11 @@
     }
   }
   function savePublicCatalogue(snapshot) {
-    localStorage.setItem('smr_public_catalogue_v1', JSON.stringify({ saved_at: Date.now(), snapshot: { nodes: snapshot.nodes || [] } }));
+    try { localStorage.setItem('smr_public_catalogue_v1', JSON.stringify({ saved_at: Date.now(), snapshot: { nodes: snapshot.nodes || [] } })); } catch { /* Browsing still works when browser storage is full or disabled. */ }
   }
   async function loadCatalogue() {
     busy(syncStatus);
+    if(!state.snapshot?.nodes?.length)fetch('./catalogue-fallback.json').then(r=>{if(!r.ok)throw new Error();return r.json();}).then(saved=>{if(!state.snapshot?.nodes?.length&&Array.isArray(saved.nodes)&&saved.nodes.length){state.snapshot=saved;renderCatalogue();syncStatus.textContent='Saved catalogue';}}).catch(()=>{});
     try {
       state.snapshot = await callServer('getCatalogueSnapshot', '');
       loadExpansionState();
@@ -592,9 +602,17 @@
       syncStatus.innerHTML = state.snapshot.stale ? '<span class="status-dot"></span>Cached' : '<span class="status-dot"></span>Synced';
       syncStatus.title = state.snapshot.stale ? 'Showing the last saved catalogue while Google refreshes it. File access and purchases are still checked separately.' : '';
     } catch (error) {
-      tree.innerHTML = '<p class="loading-state">The catalogue could not load. Refresh to try again.</p>';
-      syncStatus.textContent = 'Unavailable';
-      showToast(error.message);
+      if (!state.snapshot?.nodes?.length) {
+        try {
+          const response=await fetch('./catalogue-fallback.json');
+          if(!response.ok)throw new Error('No saved catalogue');
+          const saved=await response.json();
+          if(!Array.isArray(saved.nodes)||!saved.nodes.length)throw new Error('Invalid saved catalogue');
+          state.snapshot=saved;renderCatalogue();
+        } catch { tree.innerHTML='<p class="loading-state">Could not reach the catalogue. Please reconnect and refresh.</p>'; }
+      }
+      syncStatus.textContent = state.snapshot?.nodes?.length ? 'Saved catalogue' : 'Offline';
+      syncStatus.title='Live refresh is unavailable. Saved listings may be out of date; purchases still require a live check.';
     }
   }
 
@@ -649,12 +667,13 @@
   treeMenuRequest.addEventListener('click', () => {
     const node = snapshotNodeById(state.contextNodeId);
     hideTreeMenu();
-    if (node) requestAccess(node, node.access.mode !== 'requestable');
+    if (node) requestAccess(node, true);
   });
   treeMenuOpen.addEventListener('click', () => {
     const node = snapshotNodeById(state.contextNodeId);
     hideTreeMenu();
-    if (node && node.web_url) window.open(node.web_url, '_blank', 'noopener');
+    if (node?.kind==='file') requestAccess(node,true);
+    else if (node && node.web_url) window.open(node.web_url, '_blank', 'noopener');
   });
   treeMenuToggle.addEventListener('click', () => {
     const folder = folderById(state.contextNodeId);
@@ -1143,3 +1162,4 @@
   loadCatalogue();
   showView(location.hash.slice(1));
 })();
+
