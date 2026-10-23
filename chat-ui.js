@@ -9,6 +9,7 @@ window.setupSmrChat=function({state,callServer,showToast,openAccount}){
   modal.querySelector('.icon-button').onclick=()=>modal.close();$('new-dm').onclick=()=>setup('dm');$('new-space').onclick=()=>setup('space');
   async function select(value){selected=value;lastRender='';generation++;feed.replaceChildren();await load();}
   async function load(){
+    $('new-space').hidden=!state.member?.is_admin;
     if(lastToken!==state.token){selected=null;feed.replaceChildren();lastRender='';lastToken=state.token;generation++;$('dm-list').replaceChildren();$('space-list').replaceChildren();compose.hidden=true;}
     if(!state.token){$('chat-error').textContent='Sign in to use chat.';return;}
     const epoch=++generation,token=state.token,target=selected?{[selected.kind==='space'?'space_id':'peer']:selected.id}:{};

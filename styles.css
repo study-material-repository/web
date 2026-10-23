@@ -497,3 +497,12 @@ body { padding-left: 96px; }
 .chat-message.mine { align-self:flex-end; background:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container); }
 @media(max-width:700px) { .contribution-columns,.chat-layout { grid-template-columns:1fr; } .account-action-card .task-form { grid-template-columns:1fr; } .workspace-panel { padding:24px 16px; } .contribution-section { padding:20px 16px; } .account-dialog { padding:8px; } .app-navigation button { min-width:0; flex:1; font-size:11px; } .review-card { grid-template-columns:1fr; } .review-card button { width:100%; } }
 @media(prefers-reduced-motion:reduce) { .spinner,.request-progress-orb { animation:none; } }
+
+/* Keep tree controls clear of connector lines and preserve visible keyboard focus. */
+.tree-children > .tree-node::before { display:none; }
+.tree-row.selected { background:transparent; border-radius:0; }
+.brand-mascot { object-fit:contain; flex-shrink:0; }
+.tree-toggle { position:relative; z-index:1; }
+.icon-button[aria-label="Close"], #close-dialog, #close-request-dialog { min-width:44px; min-height:44px; font-size:26px; flex-shrink:0; }
+#picker-search { width:100%; box-sizing:border-box; padding:12px 16px; margin-block:12px; border:0; border-radius:var(--md-sys-shape-corner-medium); background:var(--md-sys-color-surface-container-high); color:var(--md-sys-color-on-surface); }
+@media(max-width:700px) { #chat .workspace-heading { align-items:center; } #chat .workspace-actions { width:100%; justify-content:center; } }

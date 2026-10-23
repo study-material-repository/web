@@ -59,7 +59,7 @@
     if (!token || warmingToken === token) return;
     warmingToken = token;
     // Two background reads at a time, rather than a burst of Apps Script jobs.
-    await Promise.allSettled([callServer('communityTasks'), callServer('communityReviewQueue'), callServer('getCoinflips')]);
+    await Promise.allSettled([callServer('communityTasks'), callServer('communityReviewQueue')]);
     let cursor = 0;
     try {
       // Warm older history too, but bound work for unusually large accounts.
@@ -315,7 +315,8 @@
     document.querySelector('#tree-menu-collapse-level').hidden = !isFolder;
     document.querySelector('#tree-menu-expand-level').hidden = !isFolder;
     const adminManage=document.querySelector('#tree-menu-admin');
-    adminManage.hidden = !(state.member && state.member.is_admin && node);
+    adminManage.hidden = true;
+    treeMenu.querySelectorAll('[data-admin-action]').forEach(button=>{button.hidden=!state.member?.is_admin||!node||(button.dataset.adminAction==='create'&&!isFolder);});
     updateDriveMenu(node);
     if (isFolder) {
       const isOpen = nodeElement.dataset.open === 'true';
@@ -333,12 +334,19 @@
     showForm('');
     dialog.showModal();
   }
+  let pathNodes, pathIndex = new Map(), cataloguePaths = new Map();
   function cataloguePathFor(node) {
     const nodes = (state.snapshot && state.snapshot.nodes) || [];
-    const byId = new Map(nodes.map(node => [String(node.id), node]));
-    const pathCache = new Map();
+    if (pathNodes !== nodes) {
+      pathNodes = nodes;
+      pathIndex = new Map(nodes.map(node => [String(node.id), node]));
+      cataloguePaths = new Map();
+    }
+    const byId = pathIndex, pathCache = cataloguePaths, visiting = new Set();
     function pathFor(node) {
       if (pathCache.has(String(node.id))) return pathCache.get(String(node.id));
+      if (visiting.has(String(node.id))) return String(node.name);
+      visiting.add(String(node.id));
       const parent = byId.get(String(node.parent_id || ''));
       const path = (parent ? pathFor(parent) + ' › ' : '') + node.name;
       pathCache.set(String(node.id), path);
@@ -507,9 +515,12 @@
       });
     }
     row.append(label);
-    const more=document.createElement('button');more.type='button';more.className='icon-button node-more';more.setAttribute('aria-label','Actions for '+node.name);more.innerHTML='<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>';
-    more.onclick=event=>{event.stopPropagation();const rect=more.getBoundingClientRect();showTreeMenu({preventDefault(){},clientX:rect.left,clientY:rect.bottom},wrapper);};row.append(more);
-    row.addEventListener('click',()=>{state.selectedNodeId=String(node.id);tree.querySelectorAll('.tree-row.selected').forEach(el=>el.classList.remove('selected'));row.classList.add('selected');});
+    row.addEventListener('click',()=>{state.selectedNodeId=String(node.id);});
+    let holdTimer, held = false;
+    row.addEventListener('pointerdown',event=>{if(event.pointerType!=='touch')return;held=false;holdTimer=setTimeout(()=>{held=true;showTreeMenu(event,wrapper);},550);});
+    ['pointerup','pointercancel','pointermove'].forEach(type=>row.addEventListener(type,()=>clearTimeout(holdTimer)));
+    row.addEventListener('click',event=>{if(held){event.preventDefault();event.stopImmediatePropagation();held=false;}},true);
+    row.addEventListener('keydown',event=>{if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10')){const rect=row.getBoundingClientRect();event.preventDefault();showTreeMenu({preventDefault(){},clientX:rect.left,clientY:rect.bottom},wrapper);}});
     if (node.coin_marked) {
       const coin = document.createElement('span');
       coin.className = 'tree-coin';
@@ -568,14 +579,12 @@
       state.snapshot = await callServer('getCatalogueSnapshot', '');
       loadExpansionState();
       savePublicCatalogue(state.snapshot);
+      renderCatalogue();
       if (state.token) {
         try {
           await refreshMemberCatalogueState();
         } catch (error) {
-          state.token = '';
-          localStorage.removeItem('smr_session_token_v1');
-          rememberMember(null);
-          showToast('Your sign-in expired. Please sign in again.');
+          showToast('Account access could not refresh. Please try again.');
         }
       }
       updateAccount();
@@ -622,8 +631,10 @@
     dialog.close();
     loadCatalogue();
   });
-  search.addEventListener('input', event => {
-    renderSearch();
+  let searchTimer;
+  search.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderSearch, 250);
   });
   search.addEventListener('paste',event=>{const text=event.clipboardData?.getData('text');if(text&&/[\n\r\uFFFC]/.test(text)){event.preventDefault();search.value=text.replace(/[\n\r\uFFFC]+/g,'; ');renderSearch();}});
   document.querySelector('#expand-all').addEventListener('click', () => tree.querySelectorAll('.tree-node-folder').forEach(node => {
@@ -659,6 +670,21 @@
   document.querySelector('#tree-menu-collapse-level').addEventListener('click', () => { setFoldersAtDepth(state.contextDepth, false); hideTreeMenu(); });
   document.querySelector('#tree-menu-expand-level').addEventListener('click', () => { setFoldersAtDepth(state.contextDepth, true); hideTreeMenu(); });
   const adminDriveDialog=document.querySelector('#admin-drive-dialog');
+  const directAdminActions={rename:'Rename',create:'New folder',grant:'Share',revoke:'Remove access',permissions:'Who has access',trash:'Move to trash'};
+  Object.entries(directAdminActions).forEach(([action,title])=>{
+    const button=document.createElement('button');button.type='button';button.setAttribute('role','menuitem');button.textContent=title;button.dataset.adminAction=action;treeMenu.append(button);
+    button.onclick=()=>{
+      const node=snapshotNodeById(state.contextNodeId);if(!node||!state.member?.is_admin)return;
+      document.querySelector('#tree-menu-admin').click();
+      adminDriveDialog.querySelector('h2').textContent=title;
+      const name=document.querySelector('#admin-drive-name');name.value=action==='create'?'':node.name;
+      name.closest('label').hidden=!['rename','create'].includes(action);
+      document.querySelector('#admin-drive-email').closest('label').hidden=!['grant','revoke'].includes(action);
+      document.querySelector('#admin-drive-role').closest('label').hidden=action!=='grant';
+      Object.keys(directAdminActions).forEach(key=>document.querySelector('#admin-drive-'+key).hidden=key!==action);
+      if(action==='permissions')adminDriveRun('permissions');
+    };
+  });
   let driveClipboard=null,pasting=false;
   ['copy','cut','paste','cascade'].forEach(action=>{const button=document.createElement('button');button.id='tree-'+action;button.type='button';button.setAttribute('role','menuitem');button.textContent=({copy:'Copy',cut:'Cut',paste:'Paste',cascade:'Expand all subfolders for everyone'})[action];treeMenu.append(button);button.onclick=()=>{const node=snapshotNodeById(state.contextNodeId);hideTreeMenu();if(!node)return;if(action==='copy'||action==='cut')setDriveClipboard(node,action);else if(action==='paste')pasteDrive(node);else setCascade(node);};});
   function updateDriveMenu(node){const admin=Boolean(state.member?.is_admin);['copy','cut','paste','cascade'].forEach(action=>{const button=document.querySelector('#tree-'+action);if(!button)return;button.hidden=!admin||!node||(['paste','cascade'].includes(action)&&node.kind!=='folder');button.disabled=(action==='copy'&&node?.kind==='folder')||(action==='paste'&&(!driveClipboard||pasting));});const button=document.querySelector('#tree-cascade');if(button)button.textContent=node?.expand_descendants?'Stop automatic subfolder expansion':'Expand all subfolders for everyone';}
@@ -882,7 +908,7 @@
   }
   function showView(view) {
     if (view === 'tasks') view = 'contribute';
-    if (!['top','contribute','lending','chat','activity'].includes(view)) view = 'top';
+    if (!['top','contribute','chat','activity'].includes(view)) view = 'top';
     for (const id of ['top','contribute','lending','chat','activity']) document.getElementById(id).hidden = id !== view;
     document.getElementById('tasks').hidden = view !== 'contribute';
     document.querySelectorAll('[data-view]').forEach(button => { if (button.dataset.view === view) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
@@ -902,6 +928,13 @@
     pickCallback = callback; pickerId = ''; renderPicker(); picker.showModal();
   }
   function renderPicker() {
+    let filter = document.querySelector('#picker-search');
+    if (!filter) {
+      filter = document.createElement('input'); filter.id='picker-search'; filter.type='search';
+      filter.placeholder='Find a unit or folder'; filter.setAttribute('aria-label','Find a destination folder');
+      document.querySelector('#picker-path').before(filter);
+      filter.addEventListener('input',()=>{clearTimeout(filter.searchTimer);filter.searchTimer=setTimeout(renderPicker,200);});
+    }
     const folders = (state.snapshot?.nodes || []).filter(node => node.kind === 'folder');
     const folderIds = new Set(folders.map(node => String(node.id)));
     const current = snapshotNodeById(pickerId);
@@ -909,8 +942,10 @@
     document.querySelector('#picker-use').disabled = !current;
     document.querySelector('#picker-back').disabled = !current;
     const list = document.querySelector('#picker-folders'); list.replaceChildren();
-    const children = folders.filter(node => pickerId ? String(node.parent_id) === String(pickerId) : !folderIds.has(String(node.parent_id)));
-    children.forEach(node => list.append(actionButton(node.name + ' ›', () => { pickerId = node.id; renderPicker(); })));
+    const query=filter.value.trim().toLowerCase();
+    const children = query ? folders.filter(node=>query.split(/\s+/).every(term=>cataloguePathFor(node).toLowerCase().includes(term))).slice(0,60) : folders.filter(node => pickerId ? String(node.parent_id) === String(pickerId) : !folderIds.has(String(node.parent_id)));
+    children.forEach(node => list.append(actionButton((query?cataloguePathFor(node):node.name) + ' ›', () => { pickerId = node.id; filter.value=''; renderPicker(); })));
+    if(query&&!children.length)list.textContent='No matching folders.';
   }
   document.querySelector('#picker-back').onclick = () => { pickerId = snapshotNodeById(pickerId)?.parent_id || ''; renderPicker(); };
   document.querySelector('#picker-use').onclick = () => { picker.close(); pickCallback(pickerId); };
