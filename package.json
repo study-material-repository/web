@@ -1,0 +1,11 @@
+{
+  "name": "smr-web",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write *.js *.css *.html *.json",
+    "format:check": "prettier --check *.js *.css *.html *.json"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2"
+  }
+}
