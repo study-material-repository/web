@@ -131,8 +131,20 @@
     return entry.promise;
   }
   const spinnerMarkup = '<span class="spinner" role="status" aria-label="Please wait"></span>';
-  function busy(element) {
+  function busy(element, label) {
+    const labels = {
+      'community-status': 'Fetching tasks…',
+      'review-status': 'Finding your reviews…',
+      'form-message': 'Connecting to your account…',
+    };
     element.innerHTML = spinnerMarkup;
+    const text = label || labels[element.id];
+    if (text) {
+      const caption = document.createElement('span');
+      caption.className = 'loading-wave';
+      caption.textContent = text;
+      element.append(caption);
+    }
   }
   async function sendServer(name, ...args) {
     const requests = {
@@ -334,7 +346,7 @@
       : node.name + ' — ' + coins(Number(node.access.price_millis || 0) / 1000) + ' 🪙';
     requestDetail.textContent = checkingOwnedFile
       ? 'We will verify your completed website purchase. No coins are spent for this check.'
-      : 'We will check your balance and grant Drive access if you have enough coins. Confirming spends the price shown only if the request succeeds.';
+      : 'Request access for the price shown.';
     requestConfirm.textContent = checkingOwnedFile ? 'Check access' : 'Request access';
     setRequestProgress('', false);
     requestDialog.showModal();
@@ -1425,7 +1437,7 @@
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     button.classList.add('is-loading');
-    setMessage('');
+    busy(formMessage, 'Signing you in…');
     try {
       const result = await callServer(
         'passwordLogin',
@@ -1435,8 +1447,8 @@
       state.token = result.session_token;
       rememberMember(result.member);
       localStorage.setItem('smr_session_token_v1', state.token);
-      updateAccount();
       dialog.close();
+      updateAccount();
       warmViews();
       showToast('Signed in.');
       refreshMemberCatalogueState().catch((error) => showToast(error.message));

@@ -271,3 +271,47 @@
     flex-basis: 100%;
   }
 }
+.loading-wave,
+.request-progress #request-progress-message {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  background: linear-gradient(
+    110deg,
+    var(--md-sys-color-on-surface-variant) 30%,
+    var(--md-sys-color-primary) 45%,
+    var(--md-sys-color-on-surface-variant) 60%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: smr-status-wave 2.4s linear infinite;
+}
+@keyframes smr-status-wave {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-wave,
+  .request-progress #request-progress-message {
+    animation: none;
+    background: none;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+}
+.loading-wave {
+  margin-left: 10px;
+}
+.chat-empty > .material-symbols-outlined {
+  width: auto;
+  height: auto;
+  line-height: 1.2;
+  overflow: visible;
+}
