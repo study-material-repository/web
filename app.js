@@ -806,6 +806,10 @@
         return requestAccess(node);
       }
       if (result.status === 'COMPLETED') showToast('Access granted. It is now available in Drive.');
+      else if (result.status === 'HELD')
+        showToast(
+          'Drive access is still pending. Your request is saved; retrying will not charge you again.',
+        );
       else if (result.status === 'REPAIRED_COMPLETED_PURCHASE')
         showToast(
           'Your completed purchase was delivered to Drive. No additional coins were spent.',
@@ -819,7 +823,8 @@
         );
       else
         showToast(
-          result.error || 'The request could not be completed; your held coins were released.',
+          result.error ||
+            'The request could not be completed. Check your request history before trying again.',
         );
       if (['COMPLETED', 'ALREADY_OWNED', 'REPAIRED_COMPLETED_PURCHASE'].includes(result.status)) {
         node.web_url = ownedFileUrl(node);
