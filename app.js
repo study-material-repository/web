@@ -93,6 +93,7 @@
           'setCommunityYear',
           'fundCommunityTask',
           'voteCommunityTask',
+          'activateImportedTask',
           'proposeCommunityTask',
           'requestCatalogueAccess',
           'sendCoins',
@@ -178,6 +179,10 @@
         },
       ],
       communityTasks: ['community_tasks', { session_token: state.token }],
+      activateImportedTask: [
+        'activate_imported_task',
+        { session_token: state.token, task_id: args[0] },
+      ],
       proposeCommunityTask: [
         'propose_community_task',
         {
@@ -1611,6 +1616,10 @@
     busy(status);
     list.replaceChildren();
     try {
+      if (state.token && !state.member) {
+        const account = await callServer('getMemberCatalogueState', state.token);
+        rememberMember(account.member || null);
+      }
       const result = await callServer('communityTasks');
       status.textContent = result.tasks.length
         ? ''
@@ -1653,7 +1662,9 @@
           task.status === 'completed'
             ? 'Completed'
             : task.status === 'proposed'
-              ? 'Proposal'
+              ? task.source_label
+                ? coins(task.historical_reward_coins) + ' coins · Awaiting activation'
+                : 'Proposal'
               : coins(task.reward_coins) + ' coins funded';
         summary.append(marker, title, badge);
         card.append(summary);
@@ -1673,10 +1684,26 @@
               : '.') +
             (task.status === 'completed'
               ? ' Historical completion; no new payout.'
-              : ' Only the funded reward is available on the website.');
+              : ' Treasury funds are reserved when this task is activated.');
           contents.append(source);
         }
-        if (task.status === 'proposed') contents.append(vote);
+        if (task.status === 'proposed' && task.source_label) {
+          if (state.member?.is_admin) {
+            const activate = actionButton('Activate with treasury funds', async () => {
+              activate.disabled = true;
+              busy(status);
+              try {
+                await callServer('activateImportedTask', task.id);
+                await refreshMemberCatalogueState();
+                await loadCommunityTasks();
+              } catch (error) {
+                status.textContent = error.message;
+                activate.disabled = false;
+              }
+            });
+            contents.append(activate);
+          }
+        } else if (task.status === 'proposed') contents.append(vote);
         else {
           const reward = document.createElement('p');
           reward.textContent =
