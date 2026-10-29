@@ -1025,68 +1025,102 @@
     tree.replaceChildren();
     const built = buildTree(state.snapshot.nodes || []);
     const roots = built.length === 1 && built[0].kind === 'folder' ? built[0].children : built;
-    let switcher = document.querySelector('#catalogue-mode');
-    if (!switcher) {
-      switcher = document.createElement('div');
-      switcher.id = 'catalogue-mode';
-      switcher.className = 'dialog-actions';
-      for (const mode of ['Tree', 'Browse years']) {
-        const button = actionButton(mode, () => {
-          tree.dataset.mode = mode;
-          tree.dataset.folder = '';
-          renderCatalogue();
-        });
-        switcher.append(button);
+    document.querySelector('#catalogue-mode')?.remove();
+    const all = new Map();
+    const visit = (nodes, trail = []) =>
+      nodes.forEach((node) => {
+        all.set(String(node.id), { node, trail });
+        visit(node.children || [], [...trail, node]);
+      });
+    visit(roots);
+    const key = 'smr_catalogue_location_v2';
+    if (tree.dataset.folder === undefined) {
+      try {
+        tree.dataset.folder = localStorage.getItem(key) || '';
+      } catch {
+        tree.dataset.folder = '';
       }
-      tree.before(switcher);
     }
-    if (tree.dataset.mode === 'Browse years') {
-      const all = [];
-      const visit = (nodes) =>
+    const selected = all.get(tree.dataset.folder);
+    const current = selected?.node;
+    const trail = selected ? [...selected.trail, current] : [];
+    const navigate = (id) => {
+      tree.dataset.folder = String(id || '');
+      try {
+        localStorage.setItem(key, tree.dataset.folder);
+      } catch {}
+      renderCatalogue();
+    };
+    const navigation = document.createElement('nav');
+    navigation.className = 'catalogue-location';
+    navigation.setAttribute('aria-label', 'Catalogue location');
+    if (current) {
+      const back = actionButton('← Back', () => navigate(selected.trail.at(-1)?.id));
+      back.className = 'catalogue-back';
+      navigation.append(back);
+      const home = actionButton('Years', () => navigate(''));
+      home.className = 'catalogue-crumb';
+      navigation.append(home);
+      trail.forEach((node, index) => {
+        const separator = document.createElement('span');
+        separator.textContent = ' / ';
+        separator.setAttribute('aria-hidden', 'true');
+        const crumb = actionButton(node.name, () => navigate(node.id));
+        crumb.className = 'catalogue-crumb';
+        if (index === trail.length - 1) crumb.setAttribute('aria-current', 'page');
+        navigation.append(separator, crumb);
+      });
+      tree.append(navigation);
+    }
+    const contents = current ? current.children : roots;
+    const inUnit = trail.length >= 3;
+    tree.classList.toggle('unit-content', inUnit);
+    const heading = document.createElement('h2');
+    heading.className = 'catalogue-section-title';
+    heading.textContent = current ? current.name : 'Years';
+    tree.append(heading);
+    if (inUnit) {
+      const expand = (nodes) =>
         nodes.forEach((node) => {
-          all.push(node);
-          visit(node.children);
+          if (node.kind === 'folder' && !state.collapsedNodeIds.has(String(node.id)))
+            state.expandedNodeIds.add(String(node.id));
+          expand(node.children || []);
         });
-      visit(roots);
-      const current = all.find((node) => String(node.id) === tree.dataset.folder);
-      if (current) {
-        const back = actionButton('← Back', () => {
-          tree.dataset.folder = String(current.parent_id || '');
-          renderCatalogue();
-        });
-        tree.append(back);
-        const heading = document.createElement('h3');
-        heading.textContent = current.name;
-        tree.append(heading);
-      }
-      for (const node of current ? current.children : roots) {
-        if (node.kind === 'folder') {
-          const button = actionButton(node.name, () => {
-            tree.dataset.folder = String(node.id);
-            renderCatalogue();
-          });
-          button.classList.add('browse-folder');
-          tree.append(button);
-        } else {
+      expand(contents);
+      contents.forEach((node) => {
+        const element = createNode(node, 0);
+        if (element) tree.append(element);
+      });
+    } else {
+      const grid = document.createElement('div');
+      grid.className = 'catalogue-card-grid';
+      contents.forEach((node, index) => {
+        if (node.kind !== 'folder') {
           const element = createNode(node, 0);
-          if (element) tree.append(element);
+          if (element) grid.append(element);
+          return;
         }
-      }
-      emptyState.hidden = true;
-      renderSearch();
-      return;
+        const card = actionButton(node.name, () => navigate(node.id));
+        card.className = 'classroom-card';
+        card.setAttribute('aria-label', node.name);
+        card.dataset.tone = String(index % 6);
+        const caption = document.createElement('span');
+        caption.className = 'classroom-card-caption';
+        caption.textContent =
+          trail.length === 0
+            ? 'Explore semesters →'
+            : trail.length === 1
+              ? 'Explore units →'
+              : 'View materials →';
+        card.append(caption);
+        grid.append(card);
+      });
+      tree.append(grid);
     }
-    let count = 0;
-    roots.forEach((node) => {
-      const element = createNode(node, 0);
-      if (element) {
-        tree.append(element);
-        count += 1;
-      }
-    });
-    emptyState.hidden = count !== 0;
+    emptyState.hidden = contents.length !== 0;
     renderSearch();
   }
+
   function loadCachedCatalogue() {
     try {
       const cached = JSON.parse(localStorage.getItem('smr_public_catalogue_v1') || 'null');
