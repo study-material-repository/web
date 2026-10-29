@@ -127,3 +127,138 @@ select.ui-native-select {
 .ui-select-options button:disabled {
   opacity: 0.5;
 }
+/* Header and motion share the same control system as dialogs. */
+.catalogue-back.icon-button {
+  padding: 10px;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  margin-right: 8px;
+}
+#expand-all[hidden] {
+  display: none;
+}
+.task-search input {
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+}
+.task-search:focus-within {
+  outline: 2px solid #7f8dca;
+  outline-offset: 2px;
+  border-radius: 24px;
+}
+.top-bar {
+  position: relative;
+  gap: 16px;
+}
+.mascot-tip {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #52617a;
+}
+.mascot-tip a {
+  color: #3f51a0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.top-bar label.search {
+  display: none;
+}
+.top-bar.search-open label.search {
+  display: flex;
+  flex: 1;
+}
+.top-bar.search-open .mascot-tip {
+  display: none;
+}
+.header-search-toggle {
+  flex: 0 0 44px;
+}
+.header-search-toggle[hidden] {
+  display: none;
+}
+.tips-editor {
+  width: min(700px, calc(100vw - 32px));
+}
+.tips-editor form,
+.tips-editor-list,
+.tip-links {
+  display: grid;
+  gap: 16px;
+}
+.tip-editor-row {
+  background: #f0f3f9;
+  border-radius: 18px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.tips-editor label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.tips-editor input:not([type='checkbox']),
+.tips-editor textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+  background: white;
+  color: inherit;
+  font: inherit;
+}
+.tips-editor textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.tips-editor .tip-enabled {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tip-link-row {
+  display: grid;
+  gap: 8px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .task-row::details-content {
+    transition:
+      content-visibility 0.2s allow-discrete,
+      opacity 0.2s;
+  }
+  .task-row:not([open])::details-content {
+    opacity: 0;
+  }
+  .task-row[open]::details-content {
+    opacity: 1;
+  }
+  .task-row[open] .task-row-details {
+    animation: smr-reveal 0.18s ease-out;
+  }
+  dialog[open] {
+    animation: smr-reveal 0.16s ease-out;
+  }
+  @keyframes smr-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+@media (max-width: 600px) {
+  .mascot-tip {
+    font-size: 12px;
+  }
+  .top-bar {
+    gap: 10px;
+  }
+}

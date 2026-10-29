@@ -150,6 +150,8 @@
   }
   async function sendServer(name, ...args) {
     const requests = {
+      siteTips: ['site_tips', {}],
+      adminSiteTips: ['admin_site_tips', { ...args[0], session_token: state.token }],
       getCatalogueSnapshot: ['catalogue_snapshot', { session_token: args[0] || '' }],
       getMemberCatalogueState: ['member_catalogue_state', { session_token: args[0] }],
       memberRequestHistory: [
@@ -385,6 +387,9 @@
     setMessage('');
   }
   function updateAccount() {
+    document.dispatchEvent(
+      new CustomEvent('smr-account', { detail: { isAdmin: !!state.member?.is_admin } }),
+    );
     const signedIn = Boolean(state.member);
     document.querySelector('#activity-balance').textContent = signedIn
       ? coins(state.member.balance_coins) + ' 🪙'
@@ -1076,7 +1081,11 @@
     navigation.setAttribute('aria-label', 'Catalogue location');
     if (current) {
       const back = actionButton('← Back', () => navigate(selected.trail.at(-1)?.id));
-      back.className = 'catalogue-back';
+      back.className = 'catalogue-back icon-button';
+      back.innerHTML =
+        '<span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>';
+      back.setAttribute('aria-label', 'Back');
+      back.title = 'Back';
       navigation.append(back);
       const home = actionButton('Years', () => navigate(''));
       home.className = 'catalogue-crumb';
@@ -1141,6 +1150,10 @@
       });
       tree.append(grid);
     }
+    updateExpandControl();
+    syncStatus.title = state.snapshot.generated_at
+      ? 'Catalogue refreshed ' + new Date(state.snapshot.generated_at).toLocaleString()
+      : 'Refresh time unavailable for this saved catalogue';
     emptyState.hidden = contents.length !== 0;
     renderSearch();
   }
@@ -1202,9 +1215,11 @@
       syncStatus.innerHTML = state.snapshot.stale
         ? '<span class="status-dot"></span>Cached'
         : '<span class="status-dot"></span>Synced';
-      syncStatus.title = state.snapshot.stale
-        ? 'Showing the last saved catalogue while Google refreshes it. File access and purchases are still checked separately.'
-        : '';
+      syncStatus.title = state.snapshot.generated_at
+        ? 'Catalogue refreshed ' +
+          new Date(state.snapshot.generated_at).toLocaleString() +
+          (state.snapshot.stale ? ' (saved copy)' : '')
+        : 'Refresh time unavailable';
     } catch (error) {
       if (!state.snapshot?.nodes?.length) {
         try {
@@ -1298,12 +1313,29 @@
       renderSearch();
     }
   });
-  document.querySelector('#expand-all').addEventListener('click', () =>
-    tree.querySelectorAll('.tree-node-folder').forEach((node) => {
-      setFolderOpen(node, true, false);
-    }),
-  );
-  document.querySelector('#expand-all').addEventListener('click', saveExpansionState);
+  function updateExpandControl() {
+    const button = document.querySelector('#expand-all');
+    const folders = [...tree.querySelectorAll('.tree-node-folder')];
+    button.hidden = !tree.classList.contains('unit-content') || !folders.length;
+    const allOpen = folders.every((node) => node.dataset.open === 'true');
+    button.dataset.collapse = String(allOpen);
+    button.title = allOpen ? 'Collapse all folders' : 'Expand all folders';
+    button.setAttribute('aria-label', button.title);
+    button.querySelector('span').textContent = allOpen ? 'unfold_less' : 'unfold_more';
+  }
+  document.querySelector('#expand-all').addEventListener('click', () => {
+    const open = document.querySelector('#expand-all').dataset.collapse !== 'true';
+    tree
+      .querySelectorAll('.tree-node-folder')
+      .forEach((node) => setFolderOpen(node, open, false, true));
+    saveExpansionState();
+    updateExpandControl();
+  });
+  new MutationObserver(updateExpandControl).observe(tree, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['data-open'],
+  });
   tree.addEventListener('contextmenu', (event) => {
     const row = event.target.closest('.tree-row');
     const nodeElement = row && row.parentElement;
@@ -1758,6 +1790,14 @@
       (button.onclick = () => {
         taskFilter = button.dataset.taskFilter;
         filterTasks();
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
+          document.querySelector('#community-list').animate(
+            [
+              { opacity: 0, transform: 'translateY(5px)' },
+              { opacity: 1, transform: 'translateY(0)' },
+            ],
+            { duration: 180, easing: 'ease-out' },
+          );
       }),
   );
   taskTools.querySelector('input').addEventListener('input', (event) => {
@@ -1973,7 +2013,8 @@
       if (button.dataset.view === view) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     });
-    search.closest('label').style.visibility = view === 'top' ? '' : 'hidden';
+    search.closest('label').style.visibility = '';
+    document.dispatchEvent(new CustomEvent('smr-view', { detail: { view } }));
     if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
     if (renderedViews.get(view) === state.token) return;
     renderedViews.set(view, state.token);
@@ -2206,7 +2247,9 @@
     busy(status);
     try {
       const data = await callServer('communityReviewQueue');
-      document.querySelector('#year-form').hidden = Boolean(data.academic_year);
+      document.querySelector('#year-form').hidden = false;
+      if (data.academic_year)
+        document.querySelector('#review-year').value = String(data.academic_year);
       status.textContent = data.is_admin
         ? 'Administrator review · one approval publishes.'
         : data.academic_year
@@ -2327,10 +2370,11 @@
   }
   document.querySelector('#year-form').onsubmit = async (event) => {
     event.preventDefault();
-    const button = event.target.querySelector('button');
+    const button = event.target.querySelector('button[type=submit]');
     button.disabled = true;
     try {
       await callServer('setCommunityYear', document.querySelector('#review-year').value);
+      invalidateViews();
       await loadReviews();
     } catch (error) {
       showToast(error.message);
@@ -2701,4 +2745,5 @@
   }, 120000);
   loadCatalogue();
   showView(location.hash.slice(1));
+  window.SMRApp = { callServer, isAdmin: () => !!state.member?.is_admin };
 })();
