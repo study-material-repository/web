@@ -64,6 +64,7 @@
   function invalidateViews() {
     cacheEpoch++;
     viewCache.clear();
+    renderedViews.clear();
   }
   async function warmViews() {
     const token = state.token;
@@ -179,6 +180,7 @@
         },
       ],
       communityTasks: ['community_tasks', { session_token: state.token }],
+      adminEditTask: ['admin_edit_task', { session_token: state.token, ...args[0] }],
       activateImportedTask: [
         'activate_imported_task',
         { session_token: state.token, task_id: args[0] },
@@ -232,7 +234,12 @@
       ],
       sendCoins: [
         'send_coins',
-        { session_token: state.token, recipient: args[0], coins: args[1], request_id: args[2] },
+        {
+          session_token: state.token,
+          recipient: args[0],
+          coins: args[1],
+          request_id: args[2],
+        },
       ],
       chatSnapshot: ['chat_snapshot', { session_token: state.token, peer: args[0] || '' }],
       sendChatMessage: [
@@ -244,7 +251,12 @@
       getCoinflips: ['get_coinflips', { session_token: state.token }],
       createCoinflip: [
         'create_coinflip',
-        { session_token: state.token, coins: args[0], chosen_side: args[1], request_id: args[2] },
+        {
+          session_token: state.token,
+          coins: args[0],
+          chosen_side: args[1],
+          request_id: args[2],
+        },
       ],
       cancelCoinflip: ['cancel_coinflip', { session_token: state.token, lobby_id: args[0] }],
       acceptCoinflip: ['accept_coinflip', { session_token: state.token, lobby_id: args[0] }],
@@ -480,7 +492,10 @@
   function saveExpansionState() {
     localStorage.setItem(
       state.expansionStateKey || getExpansionStateKey(),
-      JSON.stringify({ open: [...state.expandedNodeIds], closed: [...state.collapsedNodeIds] }),
+      JSON.stringify({
+        open: [...state.expandedNodeIds],
+        closed: [...state.collapsedNodeIds],
+      }),
     );
   }
   function folderById(id) {
@@ -636,7 +651,11 @@
     });
     const sortNodes = (list) =>
       list
-        .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true }))
+        .sort((a, b) =>
+          String(a.name).localeCompare(String(b.name), undefined, {
+            numeric: true,
+          }),
+        )
         .forEach((node) => sortNodes(node.children));
     sortNodes(roots);
     return roots;
@@ -862,7 +881,13 @@
       const baseAccess = node.baseAccess || node.access;
       const baseUrl = node.baseUrl === undefined ? node.web_url : node.baseUrl;
       if (!owned.has(String(node.id)))
-        return { ...node, access: baseAccess, web_url: baseUrl, baseAccess, baseUrl };
+        return {
+          ...node,
+          access: baseAccess,
+          web_url: baseUrl,
+          baseAccess,
+          baseUrl,
+        };
       return {
         ...node,
         baseAccess,
@@ -887,10 +912,7 @@
       isFolder && /\b(?:CSC|SCS|ICT)\s*\d{3}\b/i.test(String(node.name)),
     );
     wrapper.style.setProperty('--depth', depth);
-    const shouldOpen =
-      Boolean(state.query) ||
-      (depth === 0 && !state.collapsedNodeIds.has(String(node.id))) ||
-      state.expandedNodeIds.has(String(node.id));
+    const shouldOpen = Boolean(state.query) || state.expandedNodeIds.has(String(node.id));
     wrapper.dataset.open = String(shouldOpen);
     wrapper.setAttribute('role', 'treeitem');
     if (isFolder) wrapper.setAttribute('aria-expanded', String(shouldOpen));
@@ -919,9 +941,9 @@
     icon.textContent = isFolder ? 'folder' : 'description';
     icon.setAttribute('aria-hidden', 'true');
     row.append(icon);
-    const requiresAccess = node.access.mode === 'requestable' && !isFolder;
-    const needsConfiguration = node.access.mode === 'unconfigured';
-    const isLockedFolder = node.access.mode === 'locked_folder';
+    const requiresAccess = node.access?.mode === 'requestable' && !isFolder;
+    const needsConfiguration = node.access?.mode === 'unconfigured';
+    const isLockedFolder = node.access?.mode === 'locked_folder';
     const isAction = !isFolder || requiresAccess || needsConfiguration;
     const label = document.createElement(isAction ? 'button' : 'span');
     label.className = 'tree-label' + (isAction ? ' tree-link' : '');
@@ -1001,7 +1023,59 @@
   function renderCatalogue() {
     loadExpansionState();
     tree.replaceChildren();
-    const roots = buildTree(state.snapshot.nodes || []);
+    const built = buildTree(state.snapshot.nodes || []);
+    const roots = built.length === 1 && built[0].kind === 'folder' ? built[0].children : built;
+    let switcher = document.querySelector('#catalogue-mode');
+    if (!switcher) {
+      switcher = document.createElement('div');
+      switcher.id = 'catalogue-mode';
+      switcher.className = 'dialog-actions';
+      for (const mode of ['Tree', 'Browse years']) {
+        const button = actionButton(mode, () => {
+          tree.dataset.mode = mode;
+          tree.dataset.folder = '';
+          renderCatalogue();
+        });
+        switcher.append(button);
+      }
+      tree.before(switcher);
+    }
+    if (tree.dataset.mode === 'Browse years') {
+      const all = [];
+      const visit = (nodes) =>
+        nodes.forEach((node) => {
+          all.push(node);
+          visit(node.children);
+        });
+      visit(roots);
+      const current = all.find((node) => String(node.id) === tree.dataset.folder);
+      if (current) {
+        const back = actionButton('← Back', () => {
+          tree.dataset.folder = String(current.parent_id || '');
+          renderCatalogue();
+        });
+        tree.append(back);
+        const heading = document.createElement('h3');
+        heading.textContent = current.name;
+        tree.append(heading);
+      }
+      for (const node of current ? current.children : roots) {
+        if (node.kind === 'folder') {
+          const button = actionButton(node.name, () => {
+            tree.dataset.folder = String(node.id);
+            renderCatalogue();
+          });
+          button.classList.add('browse-folder');
+          tree.append(button);
+        } else {
+          const element = createNode(node, 0);
+          if (element) tree.append(element);
+        }
+      }
+      emptyState.hidden = true;
+      renderSearch();
+      return;
+    }
     let count = 0;
     roots.forEach((node) => {
       const element = createNode(node, 0);
@@ -1028,7 +1102,10 @@
     try {
       localStorage.setItem(
         'smr_public_catalogue_v1',
-        JSON.stringify({ saved_at: Date.now(), snapshot: { nodes: snapshot.nodes || [] } }),
+        JSON.stringify({
+          saved_at: Date.now(),
+          snapshot: { nodes: snapshot.nodes || [] },
+        }),
       );
     } catch {
       /* Browsing still works when browser storage is full or disabled. */
@@ -1241,6 +1318,29 @@
   });
   let driveClipboard = null,
     pasting = false;
+  const copyName = actionButton('Copy name', async () => {
+    const node = snapshotNodeById(state.contextNodeId);
+    hideTreeMenu();
+    if (node)
+      try {
+        await navigator.clipboard.writeText(node.name);
+        showToast('Name copied.');
+      } catch {
+        showToast('Could not copy the name.');
+      }
+  });
+  copyName.setAttribute('role', 'menuitem');
+  treeMenu.append(copyName);
+  const recheck = actionButton('Recheck Drive access', () => {
+    const node = snapshotNodeById(state.contextNodeId);
+    hideTreeMenu();
+    if (node?.kind === 'file') {
+      node.checkToken = 'force';
+      requestAccess(node, true);
+    }
+  });
+  recheck.setAttribute('role', 'menuitem');
+  treeMenu.append(recheck);
   ['copy', 'cut', 'paste', 'cascade'].forEach((action) => {
     const button = document.createElement('button');
     button.id = 'tree-' + action;
@@ -1263,6 +1363,7 @@
     };
   });
   function updateDriveMenu(node) {
+    recheck.hidden = node?.kind !== 'file';
     const admin = Boolean(state.member?.is_admin);
     ['copy', 'cut', 'paste', 'cascade'].forEach((action) => {
       const button = document.querySelector('#tree-' + action);
@@ -1283,7 +1384,12 @@
     if (!state.member?.is_admin) return;
     if (mode === 'copy' && node.kind === 'folder')
       return showToast('Folders can be cut and moved; select a file to copy.');
-    driveClipboard = { id: node.id, name: node.name, mode, member: state.member.member_id };
+    driveClipboard = {
+      id: node.id,
+      name: node.name,
+      mode,
+      member: state.member.member_id,
+    };
     tree.querySelectorAll('.is-cut').forEach((el) => el.classList.remove('is-cut'));
     if (mode === 'cut') folderOrFile(node.id)?.classList.add('is-cut');
     showToast(
@@ -1677,21 +1783,8 @@
         contents.className = 'task-row-details';
         contents.append(path, note);
         card.append(contents);
-        if (task.source_label) {
-          const source = document.createElement('p');
-          source.className = 'dialog-copy';
-          source.textContent =
-            task.source_label +
-            ' · PDF page ' +
-            task.source_pages +
-            (task.historical_reward_coins
-              ? ' · Originally offered ' + coins(task.historical_reward_coins) + ' coins.'
-              : '.') +
-            (task.status === 'completed'
-              ? ' Historical completion; no new payout.'
-              : ' Treasury funds are reserved when this task is activated.');
-          contents.append(source);
-        }
+        if (state.member?.is_admin)
+          contents.append(actionButton('Edit task', () => editTask(task)));
         if (task.status === 'proposed' && task.source_label) {
           if (state.member?.is_admin) {
             const activate = actionButton('Activate with treasury funds', async () => {
@@ -1809,6 +1902,7 @@
     });
     return button;
   }
+  const renderedViews = new Map();
   function showView(view) {
     if (view === 'tasks') view = 'contribute';
     if (!['top', 'contribute', 'chat', 'activity'].includes(view)) view = 'top';
@@ -1821,6 +1915,8 @@
     });
     search.closest('label').style.visibility = view === 'top' ? '' : 'hidden';
     if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
+    if (renderedViews.get(view) === state.token) return;
+    renderedViews.set(view, state.token);
     if (view === 'contribute') {
       loadReviews();
       loadCommunityTasks();
@@ -1832,6 +1928,78 @@
     }
     if (view === 'chat') chatUi.load();
     if (view === 'lending') loadCoinflips();
+  }
+  function editTask(task) {
+    const modal = document.createElement('dialog');
+    modal.className = 'account-dialog';
+    const form = document.createElement('form');
+    const title = document.createElement('input'),
+      note = document.createElement('textarea'),
+      reward = document.createElement('input'),
+      status = document.createElement('select');
+    title.value = task.title;
+    title.required = true;
+    note.value = task.note || '';
+    reward.type = 'number';
+    reward.min = '0';
+    reward.step = '0.001';
+    reward.value = task.historical_reward_coins || task.reward_coins || 0;
+    for (const value of ['proposed', 'open', 'completed']) {
+      const option = new Option(value, value);
+      status.append(option);
+    }
+    status.value = task.status;
+    for (const [label, input] of [
+      ['Title', title],
+      ['Description', note],
+      ['Treasury reward', reward],
+      ['Status', status],
+    ]) {
+      const field = document.createElement('label');
+      field.textContent = label;
+      field.append(input);
+      form.append(field);
+    }
+    const hint = document.createElement('p');
+    hint.textContent =
+      'Marking complete here releases unused reward funds. Reviewed submissions receive their reward through review.';
+    form.append(hint);
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.textContent = 'Save';
+    save.className = 'tonal-button';
+    const cancel = actionButton('Cancel', () => modal.close());
+    cancel.type = 'button';
+    form.append(save, cancel);
+    const message = document.createElement('p');
+    form.append(message);
+    const request_id = crypto.randomUUID();
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      save.disabled = true;
+      busy(message);
+      try {
+        await callServer('adminEditTask', {
+          task_id: task.id,
+          title: title.value,
+          note: note.value,
+          reward_coins: reward.value,
+          status: status.value,
+          request_id,
+        });
+        invalidateViews();
+        await loadCommunityTasks();
+        modal.close();
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        save.disabled = false;
+      }
+    };
+    modal.append(form);
+    document.body.append(modal);
+    modal.onclose = () => modal.remove();
+    modal.showModal();
   }
   document
     .querySelectorAll('[data-view]')
@@ -1913,12 +2081,33 @@
     document.querySelector('#fund-amount').disabled = false;
     document.querySelector('#fund-task').textContent = task.title;
     document.querySelector('#fund-status').textContent = '';
+    let presets = document.querySelector('#fund-presets');
+    if (!presets) {
+      presets = document.createElement('div');
+      presets.id = 'fund-presets';
+      presets.className = 'dialog-actions';
+      for (const amount of [1, 2, 5, 'Custom']) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'tonal-button';
+        button.textContent =
+          amount === 'Custom' ? amount : amount + (amount === 1 ? ' coin' : ' coins');
+        button.onclick = () => {
+          const input = document.querySelector('#fund-amount');
+          if (input.disabled) return;
+          input.value = amount === 'Custom' ? '' : String(amount);
+          input.focus();
+        };
+        presets.append(button);
+      }
+      document.querySelector('#fund-amount').insertAdjacentElement('afterend', presets);
+    }
     fundDialog.showModal();
   }
   document.querySelector('#close-fund').onclick = () => fundDialog.close();
   document.querySelector('#fund-form').onsubmit = async (event) => {
     event.preventDefault();
-    const button = event.target.querySelector('button');
+    const button = event.target.querySelector('button[type="submit"]');
     if (button.disabled) return;
     const input = document.querySelector('#fund-amount');
     // Keep the exact same request reference and amount after an uncertain response.
@@ -2434,7 +2623,12 @@
     modal.append(body);
   });
 
-  const chatUi = window.setupSmrChat({ state, callServer, showToast, openAccount });
+  const chatUi = window.setupSmrChat({
+    state,
+    callServer,
+    showToast,
+    openAccount,
+  });
   loadCachedCatalogue();
   busy(syncStatus);
   if (!state.snapshot) busy(tree);
