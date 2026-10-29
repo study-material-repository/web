@@ -776,7 +776,27 @@
       searchPanel.append(card);
     });
   }
+  function isCoinRestricted(node) {
+    const seen = new Set();
+    while (node && !seen.has(String(node.id))) {
+      seen.add(String(node.id));
+      if (node.kind === 'folder' && (String(node.name).includes('🪙') || node.coin_marked === true))
+        return true;
+      node = snapshotNodeById(node.parent_id);
+    }
+    return false;
+  }
   async function requestAccess(node, checkOnly = false) {
+    if (!isCoinRestricted(node) && node.checkToken !== 'force') {
+      window.open(
+        node.web_url ||
+          'https://drive.google.com/open?id=' +
+            encodeURIComponent(node.target_drive_item_id || node.id),
+        '_blank',
+        'noopener',
+      );
+      return;
+    }
     if (requestInFlight || resolvePendingRequest) return;
     if (!state.member) {
       if (node.access?.mode === 'open' && node.web_url) {
@@ -1061,7 +1081,7 @@
       const home = actionButton('Years', () => navigate(''));
       home.className = 'catalogue-crumb';
       navigation.append(home);
-      trail.forEach((node, index) => {
+      trail.slice(0, -1).forEach((node, index) => {
         const separator = document.createElement('span');
         separator.textContent = ' / ';
         separator.setAttribute('aria-hidden', 'true');
@@ -1070,6 +1090,10 @@
         if (index === trail.length - 1) crumb.setAttribute('aria-current', 'page');
         navigation.append(separator, crumb);
       });
+      const trailingSeparator = document.createElement('span');
+      trailingSeparator.textContent = ' / ';
+      trailingSeparator.setAttribute('aria-hidden', 'true');
+      navigation.append(trailingSeparator);
       tree.append(navigation);
     }
     const contents = current ? current.children : roots;
@@ -1364,6 +1388,7 @@
       }
   });
   copyName.setAttribute('role', 'menuitem');
+  copyName.dataset.icon = 'content_copy';
   treeMenu.append(copyName);
   const recheck = actionButton('Recheck Drive access', () => {
     const node = snapshotNodeById(state.contextNodeId);
@@ -1374,6 +1399,7 @@
     }
   });
   recheck.setAttribute('role', 'menuitem');
+  recheck.dataset.icon = 'refresh';
   treeMenu.append(recheck);
   ['copy', 'cut', 'paste', 'cascade'].forEach((action) => {
     const button = document.createElement('button');
