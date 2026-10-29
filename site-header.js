@@ -95,6 +95,14 @@
       render();
     }
   } catch {}
+  document.querySelector('.brand').addEventListener('click', (event) => {
+    if (['', '#top'].includes(location.hash)) {
+      event.preventDefault();
+      offset++;
+      lastTip = '';
+      render();
+    }
+  });
   load();
   setInterval(render, 30000);
   setInterval(load, 300000);
@@ -155,11 +163,19 @@
     form.append(list);
     const rows = [];
     function addTip(item = { id: crypto.randomUUID(), text: '', enabled: true, links: [] }) {
-      const row = document.createElement('section');
+      const row = document.createElement('details');
       row.className = 'tip-editor-row';
+      const summary = document.createElement('summary');
+      summary.textContent = item.text || 'New tip';
+      row.append(summary);
+      if (!item.text) row.open = true;
       const text = input('Sentence', item.text, 'textarea');
       text.field.required = true;
       text.field.maxLength = 500;
+      text.field.addEventListener(
+        'input',
+        () => (summary.textContent = text.field.value || 'New tip'),
+      );
       const enabled = document.createElement('input');
       enabled.type = 'checkbox';
       enabled.checked = item.enabled;
@@ -192,13 +208,16 @@
         links.append(box);
         linkRows.push({ box, label, url });
       }
-      row.append(
+      const body = document.createElement('div');
+      body.className = 'tip-editor-body';
+      body.append(
         enabledLabel,
         text.wrapper,
         links,
         button('Add link', () => addLink()),
         button('Remove tip', () => row.remove()),
       );
+      row.append(body);
       list.append(row);
       item.links.forEach(addLink);
       rows.push({ row, item, text, enabled, linkRows });

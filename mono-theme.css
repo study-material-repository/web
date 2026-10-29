@@ -1,0 +1,142 @@
+/* Reversible theme: remove data-theme="mono" from <html> to restore colours. */
+:root[data-theme='mono'] {
+  --md-sys-color-primary: #303033;
+  --md-sys-color-on-primary: #fff;
+  --md-sys-color-primary-container: #dedee1;
+  --md-sys-color-on-primary-container: #202023;
+  --md-sys-color-secondary-container: #e3e3e5;
+  --md-sys-color-surface: #fafafa;
+  --md-sys-color-surface-container: #f1f1f2;
+  --md-sys-color-surface-container-low: #f6f6f6;
+  --md-sys-color-surface-container-high: #e8e8ea;
+  --md-sys-color-surface-container-highest: #dddde0;
+  --md-sys-color-on-surface: #222225;
+  --md-sys-color-on-surface-variant: #55555a;
+}
+html[data-theme='mono'] body {
+  background: #fafafa;
+  color: #222225;
+}
+html[data-theme='mono'] .classroom-card:nth-child(odd) {
+  background: #303033;
+  color: #fff;
+}
+html[data-theme='mono'] .classroom-card:nth-child(even) {
+  background: #e2e2e4;
+  color: #202023;
+}
+html[data-theme='mono']
+  :is(
+    .catalogue-card,
+    .workspace-card,
+    .task-row,
+    .review-card,
+    .chat-thread,
+    .chat-layout aside,
+    .tip-editor-row
+  ) {
+  background: #f0f0f2;
+}
+html[data-theme='mono']
+  :is(
+    .tonal-button,
+    .ui-select-trigger,
+    .ui-select-options,
+    .task-tabs button[aria-pressed='true'],
+    .chat-list-item[aria-current='true']
+  ) {
+  background: #e2e2e5;
+  color: #252528;
+}
+html[data-theme='mono']
+  :is(.catalogue-crumb, .mascot-tip, .mascot-tip a, .unit-content > .tree-node-folder > .tree-row) {
+  color: #45454a;
+}
+html[data-theme='mono'] .ui-select-options button[aria-selected='true'] {
+  background: #dcdce0;
+}
+.app-shell {
+  width: auto !important;
+  max-width: 1600px !important;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (min-width: 1000px) {
+  .app-shell {
+    width: calc(100% - 160px) !important;
+    padding-top: 24px !important;
+  }
+}
+.brand-mascot {
+  width: 60px !important;
+  height: 60px !important;
+  object-fit: contain;
+}
+.catalogue-section-title {
+  text-align: right;
+}
+.classroom-card {
+  text-align: left;
+}
+.course-code {
+  display: block;
+  font-size: 14px;
+  font-weight: 400;
+  opacity: 0.8;
+  margin-top: -16px;
+}
+dialog.tips-editor {
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto !important;
+  padding: 24px;
+  scrollbar-gutter: stable;
+}
+.tip-editor-row {
+  display: block !important;
+}
+.tip-editor-row summary {
+  cursor: pointer;
+  padding: 6px;
+  font-weight: 500;
+}
+.tip-editor-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+#page-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: #2979ff;
+  z-index: 10000;
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    width 0.25s ease,
+    opacity 0.2s;
+}
+body[data-network-busy] #page-progress {
+  opacity: 1;
+}
+body[data-network-busy] .spinner {
+  visibility: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ui-select-options:popover-open {
+    animation: roll-down 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform-origin: top;
+  }
+  @keyframes roll-down {
+    from {
+      opacity: 0;
+      transform: translateY(-8px) scaleY(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

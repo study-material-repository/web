@@ -30,7 +30,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
   const modal = document.createElement('dialog');
   modal.className = 'account-dialog chat-setup';
   modal.innerHTML =
-    '<div class="dialog-scroll"><form id="chat-setup-form" class="task-form"><div class="dialog-header"><h2 id="chat-setup-title">New message</h2><button type="button" class="icon-button" aria-label="Close">×</button></div><label id="space-name-label">Space name<input id="space-name" maxlength="80"></label><label id="chat-address-label">Username or email<input id="chat-address" autocomplete="off"></label><label id="space-members-label">Members<textarea id="space-members" placeholder="Usernames or emails, separated by commas"></textarea></label><button type="submit" class="tonal-button">Continue</button><p id="chat-setup-error" role="status"></p></form></div>';
+    '<div class="dialog-scroll"><form id="chat-setup-form" class="task-form"><div class="dialog-header"><h2 id="chat-setup-title">New message</h2><button type="button" class="icon-button" aria-label="Close">×</button></div><label id="space-name-label">Space name<input id="space-name" maxlength="80"></label><label id="chat-address-label">Username or email<input id="chat-address" autocomplete="off"></label><label id="space-community-label">Community<input id="space-community" value="SMR" maxlength="80"></label><label id="space-announcement-label"><input id="space-announcement" type="checkbox">Only admins can post</label><label id="space-public-label"><input id="space-public" type="checkbox">Include all members</label><label id="space-members-label">Members<textarea id="space-members" placeholder="Usernames or emails, separated by commas"></textarea></label><button type="submit" class="tonal-button">Continue</button><p id="chat-setup-error" role="status"></p></form></div>';
   document.body.append(modal);
   const $ = (id) => document.getElementById(id),
     feed = $('chat-feed'),
@@ -62,6 +62,9 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       next === 'space' ? 'Create space' : next === 'invite' ? 'Add a member' : 'New message';
     $('space-name-label').hidden = next !== 'space';
     $('space-members-label').hidden = next !== 'space';
+    ['space-community-label', 'space-announcement-label', 'space-public-label'].forEach(
+      (id) => ($(id).hidden = next !== 'space'),
+    );
     $('chat-address-label').hidden = next === 'space';
     modal.showModal();
   }
@@ -121,7 +124,15 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       ].forEach(([id, items, kind]) => {
         const list = $(id);
         list.replaceChildren();
+        let communityLabel = '';
         items.forEach((item) => {
+          if (kind === 'space' && item.community && item.community !== communityLabel) {
+            communityLabel = item.community;
+            const heading = document.createElement('h3');
+            heading.className = 'chat-community-label';
+            heading.textContent = communityLabel;
+            list.append(heading);
+          }
           const b = button(item.label + (item.unread ? ' · ' + item.unread : ''), () =>
             select({ kind, id: item.id }),
           );
@@ -145,7 +156,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
         return;
       }
       selected = { kind: data.thread.kind, id: data.thread.id };
-      compose.hidden = false;
+      compose.hidden = data.thread.can_send === false;
       const header = $('thread-header');
       header.replaceChildren();
       const title = document.createElement('h2');
@@ -165,7 +176,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
         controls.append(members);
         header.append(controls);
         if (data.thread.can_manage) controls.append(button('Add member', () => setup('invite')));
-        else
+        else if (data.thread.can_leave !== false)
           controls.append(
             button('Leave space', async () => {
               try {
@@ -268,6 +279,9 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       } else if (mode === 'space') {
         const result = await callServer('chatSpace', {
           operation: 'create',
+          community: $('space-community').value,
+          announcement: $('space-announcement').checked,
+          public: $('space-public').checked,
           name: $('space-name').value,
           members: $('space-members').value,
         });

@@ -70,6 +70,10 @@
       this.button.removeAttribute('aria-invalid');
     }
     open() {
+      if (this.menu.matches(':popover-open')) {
+        this.menu.hidePopover();
+        return;
+      }
       this.refresh();
       this.menu.replaceChildren();
       [...this.select.options].forEach((option) => {

@@ -43,6 +43,13 @@
   let toastTimer;
   let resolvePendingRequest = null;
   let requestInFlight = false;
+  const confirmedAccess = new Set();
+  const accessKey = (node) =>
+    [
+      state.member?.member_id,
+      state.member?.delivery_email || state.member?.school_email,
+      node.target_drive_item_id || node.id,
+    ].join('|');
 
   function apiUrl() {
     const configured = String(window.SMR_API_BASE_URL || '').replace(/\/+$/, '');
@@ -149,6 +156,14 @@
     }
   }
   async function sendServer(name, ...args) {
+    window.SMRProgress?.start();
+    try {
+      return await sendServerRequest(name, ...args);
+    } finally {
+      window.SMRProgress?.end();
+    }
+  }
+  async function sendServerRequest(name, ...args) {
     const requests = {
       siteTips: ['site_tips', {}],
       adminSiteTips: ['admin_site_tips', { ...args[0], session_token: state.token }],
@@ -792,7 +807,10 @@
     return false;
   }
   async function requestAccess(node, checkOnly = false) {
-    if (!isCoinRestricted(node) && node.checkToken !== 'force') {
+    if (
+      (!isCoinRestricted(node) || confirmedAccess.has(accessKey(node))) &&
+      node.checkToken !== 'force'
+    ) {
       window.open(
         node.web_url ||
           'https://drive.google.com/open?id=' +
@@ -871,6 +889,7 @@
             'The request could not be completed. Check your request history before trying again.',
         );
       if (['COMPLETED', 'ALREADY_OWNED', 'REPAIRED_COMPLETED_PURCHASE'].includes(result.status)) {
+        confirmedAccess.add(accessKey(node));
         node.web_url = ownedFileUrl(node);
         requestSummary.textContent = node.name;
         requestDetail.textContent =
@@ -901,6 +920,7 @@
     if (!state.token || !state.snapshot) return;
     const result = await callServer('getMemberCatalogueState', state.token);
     rememberMember(result.member || null);
+    (result.verified_access_ids || []).forEach((id) => confirmedAccess.add(accessKey({ id })));
     const owned = new Set((result.owned_item_ids || []).map(String));
     state.snapshot.nodes = (state.snapshot.nodes || []).map((node) => {
       const baseAccess = node.baseAccess || node.access;
@@ -1134,6 +1154,16 @@
           return;
         }
         const card = actionButton(node.name, () => navigate(node.id));
+        const course =
+          trail.length === 2 &&
+          String(node.name).match(/^([A-Z]{2,8}\s*\d{3,5})\s*[-–—:]\s*(.+)$/i);
+        if (course) {
+          card.textContent = course[2];
+          const code = document.createElement('small');
+          code.className = 'course-code';
+          code.textContent = course[1];
+          card.append(code);
+        }
         card.className = 'classroom-card';
         card.setAttribute('aria-label', node.name);
         card.dataset.tone = String(index % 6);
@@ -1426,6 +1456,7 @@
     const node = snapshotNodeById(state.contextNodeId);
     hideTreeMenu();
     if (node?.kind === 'file') {
+      confirmedAccess.delete(accessKey(node));
       node.checkToken = 'force';
       requestAccess(node, true);
     }
@@ -2003,9 +2034,27 @@
     return button;
   }
   const renderedViews = new Map();
-  function showView(view) {
+  let navigationVersion = 0;
+  async function showView(view) {
     if (view === 'tasks') view = 'contribute';
     if (!['top', 'contribute', 'chat', 'activity'].includes(view)) view = 'top';
+    const version = ++navigationVersion,
+      token = state.token;
+    if (renderedViews.get(view) !== token) {
+      window.SMRProgress?.start();
+      try {
+        if (view === 'contribute') await Promise.all([loadReviews(), loadCommunityTasks()]);
+        if (view === 'activity') {
+          historyCursor = 0;
+          await Promise.all([loadHistory(), loadCommunityProfile()]);
+        }
+        if (view === 'chat') await chatUi.load();
+        if (token === state.token) renderedViews.set(view, token);
+      } finally {
+        window.SMRProgress?.end();
+      }
+    }
+    if (version !== navigationVersion) return;
     for (const id of ['top', 'contribute', 'lending', 'chat', 'activity'])
       document.getElementById(id).hidden = id !== view;
     document.getElementById('tasks').hidden = view !== 'contribute';
@@ -2016,19 +2065,6 @@
     search.closest('label').style.visibility = '';
     document.dispatchEvent(new CustomEvent('smr-view', { detail: { view } }));
     if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
-    if (renderedViews.get(view) === state.token) return;
-    renderedViews.set(view, state.token);
-    if (view === 'contribute') {
-      loadReviews();
-      loadCommunityTasks();
-    }
-    if (view === 'activity') {
-      historyCursor = 0;
-      loadHistory();
-      loadCommunityProfile();
-    }
-    if (view === 'chat') chatUi.load();
-    if (view === 'lending') loadCoinflips();
   }
   function editTask(task) {
     const modal = document.createElement('dialog');
