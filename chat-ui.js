@@ -379,12 +379,44 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
           picker.className = 'chat-reaction-picker';
           picker.hidden = true;
           const react = iconButton('add_reaction', 'React', () => {
-            picker.hidden = !picker.hidden;
+            const opening = picker.hidden;
+            document.querySelectorAll('.chat-reaction-picker:not([hidden])').forEach((el) => {
+              el.hidden = true;
+              el.parentElement
+                .querySelector('[aria-expanded]')
+                ?.setAttribute('aria-expanded', 'false');
+            });
+            picker.hidden = !opening;
             react.setAttribute('aria-expanded', String(!picker.hidden));
           });
           react.setAttribute('aria-expanded', 'false');
           actions.append(react);
-          ['👍', '❤️', '🎉', '👀'].forEach((emoji) => {
+          [
+            '👍',
+            '❤️',
+            '🎉',
+            '👀',
+            '😂',
+            '🙏',
+            '🔥',
+            '💯',
+            '👏',
+            '🤔',
+            '😮',
+            '😢',
+            '🚀',
+            '✅',
+            '💡',
+            '📚',
+            '🙌',
+            '💪',
+            '🤝',
+            '⭐',
+            '🥳',
+            '🫡',
+            '👎',
+            '😅',
+          ].forEach((emoji) => {
             const reaction = (message.reactions || []).find((r) => r.emoji === emoji);
             const b = button(emoji, () => {
               picker.hidden = true;
