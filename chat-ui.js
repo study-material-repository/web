@@ -43,7 +43,50 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     lastRender = '',
     retryId = null,
     readsInFlight = 0;
-  const drafts = new Map();
+  const drafts = new Map(),
+    snapshots = new Map();
+  let replyTo = null,
+    preloading = false;
+  const replyBanner = document.createElement('div');
+  replyBanner.className = 'chat-reply-preview';
+  replyBanner.hidden = true;
+  compose.before(replyBanner);
+  function reply(message) {
+    replyTo = message;
+    replyBanner.replaceChildren();
+    replyBanner.hidden = !message;
+    if (message) {
+      replyBanner.append(
+        document.createTextNode('Reply to ' + message.sender + ': ' + message.body.slice(0, 120)),
+      );
+      replyBanner.append(button('Cancel', () => reply(null)));
+      $('message-body').focus();
+    }
+  }
+  async function preload(data, token) {
+    if (preloading) return;
+    preloading = true;
+    try {
+      for (const [kind, items] of [
+        ['space', data.spaces],
+        ['dm', data.contacts],
+      ])
+        for (const item of items.slice(0, 20)) {
+          if (token !== state.token) return;
+          const key = kind + ':' + item.id;
+          if (snapshots.has(key)) continue;
+          try {
+            const value = await callServer('chatHub', {
+              [kind === 'space' ? 'space_id' : 'peer']: item.id,
+              mark_read: false,
+            });
+            if (token === state.token) snapshots.set(key, value);
+          } catch {}
+        }
+    } finally {
+      preloading = false;
+    }
+  }
   const draftKey = (value) => (value ? value.kind + ':' + value.id : '');
   function button(label, handler) {
     const b = document.createElement('button');
@@ -74,6 +117,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
   async function select(value) {
     if (selected) drafts.set(draftKey(selected), $('message-body').value);
     selected = value;
+    reply(null);
     $('message-body').value = drafts.get(draftKey(value)) || '';
     retryId = null;
     compose.hidden = true;
@@ -81,7 +125,8 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     generation++;
     feed.replaceChildren();
     host.classList.toggle('thread-open', Boolean(value));
-    if (value)
+    if (snapshots.has(draftKey(value))) render(snapshots.get(draftKey(value)));
+    else if (value)
       feed.innerHTML = '<span class="spinner" role="status" aria-label="Loading messages"></span>';
     await load();
   }
@@ -90,6 +135,8 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     if (lastToken !== state.token) {
       selected = null;
       drafts.clear();
+      snapshots.clear();
+      reply(null);
       $('message-body').value = '';
       $('thread-header').innerHTML = '<h2>Choose a conversation</h2>';
       host.classList.remove('thread-open');
@@ -109,163 +156,253 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       token = state.token,
       target = selected ? { [selected.kind === 'space' ? 'space_id' : 'peer']: selected.id } : {};
     readsInFlight++;
-    $('chat-error').innerHTML =
-      '<span class="spinner" role="status" aria-label="Loading chat"></span>';
+    if (!snapshots.size)
+      $('chat-error').innerHTML =
+        '<span class="spinner" role="status" aria-label="Loading chat"></span>';
     try {
       const data = await callServer('chatHub', {
         ...target,
         mark_read: document.visibilityState === 'visible' && !host.hidden,
       });
       if (epoch !== generation || token !== state.token) return;
-      $('chat-error').textContent = '';
-      [
-        ['dm-list', data.contacts, 'dm'],
-        ['space-list', data.spaces, 'space'],
-      ].forEach(([id, items, kind]) => {
-        const list = $(id);
-        list.replaceChildren();
-        let communityLabel = '';
-        items.forEach((item) => {
-          if (kind === 'space' && item.community && item.community !== communityLabel) {
-            communityLabel = item.community;
-            const heading = document.createElement('h3');
-            heading.className = 'chat-community-label';
-            heading.textContent = communityLabel;
-            list.append(heading);
-          }
-          const b = button(item.label + (item.unread ? ' · ' + item.unread : ''), () =>
-            select({ kind, id: item.id }),
-          );
-          if (selected?.id === item.id) b.setAttribute('aria-current', 'true');
-          list.append(b);
-        });
-        if (!items.length) {
-          const p = document.createElement('p');
-          p.className = 'dialog-copy';
-          p.textContent =
-            kind === 'space' ? 'Your joined spaces will appear here.' : 'Start a conversation.';
-          list.append(p);
-        }
-      });
-      host.classList.toggle('thread-open', Boolean(data.thread));
-      if (!data.thread) {
-        compose.hidden = true;
-        $('thread-header').innerHTML = '<h2>Choose a conversation</h2>';
-        feed.innerHTML =
-          '<div class="chat-empty"><span class="material-symbols-outlined" aria-hidden="true">forum</span><p>Messages and spaces, together.</p><p class="dialog-copy">Choose a conversation or start a new message.</p></div>';
-        return;
-      }
-      selected = { kind: data.thread.kind, id: data.thread.id };
-      compose.hidden = data.thread.can_send === false;
-      const header = $('thread-header');
-      header.replaceChildren();
-      const title = document.createElement('h2');
-      title.textContent = data.thread.label;
-      header.append(title);
-      const back = button('‹ Conversations', () => select(null));
-      back.classList.add('chat-back');
-      header.prepend(back);
-      if (data.thread.kind === 'space') {
-        const controls = document.createElement('details');
-        controls.className = 'chat-members';
-        const toggle = document.createElement('summary');
-        toggle.textContent = data.thread.members.length + ' members';
-        controls.append(toggle);
-        const members = document.createElement('p');
-        members.textContent = data.thread.members.join(', ');
-        controls.append(members);
-        header.append(controls);
-        if (data.thread.can_manage) controls.append(button('Add member', () => setup('invite')));
-        else if (data.thread.can_leave !== false)
-          controls.append(
-            button('Leave space', async () => {
-              try {
-                await callServer('chatSpace', {
-                  operation: 'leave',
-                  space_id: selected.id,
-                });
-                await select(null);
-              } catch (error) {
-                showToast(error.message);
-              }
-            }),
-          );
-        if (data.thread.label.toLowerCase() === 'smr central') {
-          const tasks = document.createElement('a');
-          tasks.className = 'chat-tasks-link';
-          tasks.href = '#contribute';
-          tasks.textContent = 'Tasks';
-          tasks.onclick = () =>
-            setTimeout(
-              () => document.querySelector('#tasks').scrollIntoView({ block: 'start' }),
-              50,
-            );
-          header.append(tasks);
-        }
-      }
-      const serialized = JSON.stringify(data.messages);
-      if (serialized !== lastRender) {
-        const atEnd = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
-        feed.replaceChildren();
-        let previousDay = '';
-        data.messages.forEach((message) => {
-          const day = new Date(message.created_at).toLocaleDateString([], {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          });
-          if (day !== previousDay) {
-            const separator = document.createElement('div');
-            separator.className = 'chat-date';
-            separator.textContent = day;
-            feed.append(separator);
-            previousDay = day;
-          }
-          const row = document.createElement('article');
-          row.className = 'chat-bubble ' + (message.mine ? 'mine' : '');
-          const sender = document.createElement('strong');
-          sender.textContent = message.mine ? 'You' : message.sender;
-          const body = document.createElement('p');
-          String(message.body)
-            .split(/(https?:\/\/[^\s<>"']+)/g)
-            .forEach((part) => {
-              if (/^https?:\/\//.test(part)) {
-                const link = document.createElement('a');
-                link.href = part;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                link.textContent = part;
-                body.append(link);
-              } else body.append(document.createTextNode(part));
-            });
-          const meta = document.createElement('small');
-          meta.textContent = new Date(message.created_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-          if (message.mine) {
-            const receipt = document.createElement('span');
-            receipt.textContent = message.read_count ? ' ✓✓' : ' ✓';
-            receipt.title = message.read_count ? 'Read by ' + message.read_count : 'Sent';
-            receipt.setAttribute('aria-label', receipt.title);
-            meta.append(receipt);
-          }
-          row.append(sender, body, meta);
-          feed.append(row);
-        });
-        if (!data.messages.length) {
-          const p = document.createElement('p');
-          p.textContent = 'No messages yet. Say hello.';
-          feed.append(p);
-        }
-        if (atEnd || !lastRender) feed.scrollTop = feed.scrollHeight;
-        lastRender = serialized;
-      }
+      snapshots.set(draftKey(selected), data);
+      render(data);
+      void preload(data, token);
     } catch (error) {
       if (epoch === generation) $('chat-error').textContent = error.message;
     } finally {
       readsInFlight--;
+    }
+  }
+  function render(data) {
+    $('chat-error').textContent = '';
+    [
+      ['dm-list', data.contacts, 'dm'],
+      ['space-list', data.spaces, 'space'],
+    ].forEach(([id, items, kind]) => {
+      const list = $(id);
+      list.replaceChildren();
+      let communityLabel = '';
+      items.forEach((item) => {
+        if (kind === 'space' && item.community && item.community !== communityLabel) {
+          communityLabel = item.community;
+          const heading = document.createElement('h3');
+          heading.className = 'chat-community-label';
+          heading.textContent = communityLabel;
+          list.append(heading);
+        }
+        const b = button(item.label + (item.unread ? ' · ' + item.unread : ''), () =>
+          select({ kind, id: item.id }),
+        );
+        if (selected?.id === item.id) b.setAttribute('aria-current', 'true');
+        list.append(b);
+      });
+      if (!items.length) {
+        const p = document.createElement('p');
+        p.className = 'dialog-copy';
+        p.textContent =
+          kind === 'space' ? 'Your joined spaces will appear here.' : 'Start a conversation.';
+        list.append(p);
+      }
+    });
+    host.classList.toggle('thread-open', Boolean(data.thread));
+    if (!data.thread) {
+      compose.hidden = true;
+      $('thread-header').innerHTML = '<h2>Choose a conversation</h2>';
+      feed.innerHTML =
+        '<div class="chat-empty"><span class="material-symbols-outlined" aria-hidden="true">forum</span><p>Messages and spaces, together.</p><p class="dialog-copy">Choose a conversation or start a new message.</p></div>';
+      return;
+    }
+    selected = { kind: data.thread.kind, id: data.thread.id };
+    compose.hidden = data.thread.can_send === false;
+    const header = $('thread-header');
+    header.replaceChildren();
+    const title = document.createElement('h2');
+    title.textContent = data.thread.label;
+    header.append(title);
+    if (data.thread.id === 'smr-help')
+      header.append(button('Report a bug or suggest a feature', ticket));
+    if (data.thread.id === 'smr-tasks') {
+      const a = document.createElement('a');
+      a.href = '#contribute';
+      a.textContent = 'Open task board';
+      header.append(a);
+    }
+    const back = button('‹ Conversations', () => select(null));
+    back.classList.add('chat-back');
+    header.prepend(back);
+    if (data.thread.kind === 'space') {
+      const controls = document.createElement('details');
+      controls.className = 'chat-members';
+      const toggle = document.createElement('summary');
+      toggle.textContent = (data.thread.member_count ?? data.thread.members.length) + ' members';
+      controls.append(toggle);
+      const members = document.createElement('p');
+      members.textContent = data.thread.members.length
+        ? data.thread.members.join(', ')
+        : 'Member list is private.';
+      controls.append(members);
+      header.append(controls);
+      if (data.thread.can_manage) controls.append(button('Add member', () => setup('invite')));
+      else if (data.thread.can_leave !== false)
+        controls.append(
+          button('Leave space', async () => {
+            try {
+              await callServer('chatSpace', {
+                operation: 'leave',
+                space_id: selected.id,
+              });
+              await select(null);
+            } catch (error) {
+              showToast(error.message);
+            }
+          }),
+        );
+      if (data.thread.label.toLowerCase() === 'smr central') {
+        const tasks = document.createElement('a');
+        tasks.className = 'chat-tasks-link';
+        tasks.href = '#contribute';
+        tasks.textContent = 'Tasks';
+        tasks.onclick = () =>
+          setTimeout(() => document.querySelector('#tasks').scrollIntoView({ block: 'start' }), 50);
+        header.append(tasks);
+      }
+    }
+    const serialized = JSON.stringify(data.messages);
+    if (serialized !== lastRender) {
+      const atEnd = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
+      feed.replaceChildren();
+      let previousDay = '';
+      data.messages.forEach((message) => {
+        const day = new Date(message.created_at).toLocaleDateString([], {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        });
+        if (day !== previousDay) {
+          const separator = document.createElement('div');
+          separator.className = 'chat-date';
+          separator.textContent = day;
+          feed.append(separator);
+          previousDay = day;
+        }
+        const row = document.createElement('article');
+        row.className = 'chat-bubble ' + (message.mine ? 'mine' : '');
+        const sender = document.createElement('strong');
+        sender.textContent = message.mine ? 'You' : message.sender;
+        const body = document.createElement('p');
+        String(message.body)
+          .split(/(https?:\/\/[^\s<>"']+)/g)
+          .forEach((part) => {
+            if (/^https?:\/\//.test(part)) {
+              const link = document.createElement('a');
+              link.href = part;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              link.textContent = part;
+              body.append(link);
+            } else body.append(document.createTextNode(part));
+          });
+        const meta = document.createElement('small');
+        meta.textContent = new Date(message.created_at).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        if (message.mine) {
+          const receipt = document.createElement('span');
+          receipt.textContent = message.read_count ? ' ✓✓' : ' ✓';
+          receipt.title = message.read_count ? 'Read by ' + message.read_count : 'Sent';
+          receipt.setAttribute('aria-label', receipt.title);
+          meta.append(receipt);
+        }
+        if (window.smrAvatar) row.append(smrAvatar(message.avatar_seed || message.sender));
+        row.append(sender);
+        if (message.reply) {
+          const quote = document.createElement('blockquote');
+          quote.className = 'chat-reply-preview';
+          quote.textContent = message.reply.sender + ': ' + message.reply.body;
+          row.append(quote);
+        }
+        row.append(body, meta);
+        const actions = document.createElement('div');
+        actions.className = 'chat-message-actions';
+        if (!message.deleted) {
+          actions.append(button('Reply', () => reply(message)));
+          ['👍', '❤️', '🎉', '👀'].forEach((emoji) => {
+            const reaction = (message.reactions || []).find((r) => r.emoji === emoji);
+            const b = button(emoji + (reaction ? ' ' + reaction.count : ''), () =>
+              changeMessage(message, 'react', { emoji, active: !reaction?.mine }),
+            );
+            b.setAttribute('aria-label', 'React ' + emoji);
+            b.setAttribute('aria-pressed', String(!!reaction?.mine));
+            actions.append(b);
+          });
+          if (message.can_delete)
+            actions.append(
+              button('Delete', () => {
+                if (confirm('Delete this message?')) changeMessage(message, 'delete');
+              }),
+            );
+        }
+        row.append(actions);
+        feed.append(row);
+      });
+      if (!data.messages.length) {
+        const p = document.createElement('p');
+        p.textContent = 'No messages yet. Say hello.';
+        feed.append(p);
+      }
+      if (atEnd || !lastRender) feed.scrollTop = feed.scrollHeight;
+      lastRender = serialized;
+    }
+  }
+  function ticket() {
+    const d = document.createElement('dialog');
+    d.className = 'account-dialog';
+    d.innerHTML =
+      '<div class="dialog-scroll"><form class="task-form"><div class="dialog-header"><h2>Help & ideas</h2><button type="button" aria-label="Close" class="icon-button">×</button></div><label>Type<select name="kind"><option>Bug report</option><option>Feature request</option></select></label><label>Title<input name="title" required maxlength="120"></label><label>Steps to reproduce or proposed behaviour<textarea name="steps" required maxlength="1200"></textarea></label><label>Expected result<textarea name="expected" required maxlength="800"></textarea></label><label>What happened instead / why this would help<textarea name="actual" required maxlength="800"></textarea></label><p class="dialog-copy">Shared with the community. Do not include passwords or verification codes.</p><button class="tonal-button">Post</button><p role="status"></p></form></div>';
+    document.body.append(d);
+    d.querySelector('[aria-label=Close]').onclick = () => d.close();
+    d.onclose = () => d.remove();
+    d.showModal();
+    const f = d.querySelector('form');
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const b = f.querySelector('button.tonal-button');
+      b.disabled = true;
+      try {
+        await callServer('chatSend', {
+          space_id: 'smr-help',
+          message_id: crypto.randomUUID(),
+          body: [
+            f.elements.kind.value + ': ' + f.elements.title.value,
+            'Steps / proposal: ' + f.elements.steps.value,
+            'Expected: ' + f.elements.expected.value,
+            'Actual / benefit: ' + f.elements.actual.value,
+            'Browser: ' + navigator.userAgent,
+          ].join('\n\n'),
+        });
+        d.close();
+        await load();
+      } catch (error) {
+        d.querySelector('[role=status]').textContent = error.message;
+      } finally {
+        b.disabled = false;
+      }
+    };
+  }
+  async function changeMessage(message, operation, extra = {}) {
+    try {
+      await callServer('chatMessage', {
+        [selected.kind === 'space' ? 'space_id' : 'peer']: selected.id,
+        message_id: message.id,
+        operation,
+        ...extra,
+      });
+      await load();
+    } catch (error) {
+      showToast(error.message);
     }
   }
   $('chat-setup-form').onsubmit = async (event) => {
@@ -317,8 +454,10 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
         [target.kind === 'space' ? 'space_id' : 'peer']: target.id,
         body,
         message_id: retryId,
+        reply_to: replyTo?.id || null,
       });
       retryId = null;
+      reply(null);
       drafts.delete(draftKey(target));
       if ($('message-body').value === body) $('message-body').value = '';
       await load();

@@ -47,25 +47,31 @@
     if (details.tagName !== 'DETAILS') return;
     event.preventDefault();
     const previous = animations.get(details);
+    const from = details.getBoundingClientRect().height;
+    const closing = previous ? !previous.closing : details.open;
     if (previous) {
-      previous.finish();
+      previous.animation.onfinish = null;
+      previous.animation.cancel();
     }
-    const closing = details.open,
-      from = details.getBoundingClientRect().height;
     details.open = true;
+    const style = getComputedStyle(details);
     const to = closing
       ? summary.getBoundingClientRect().height +
-        parseFloat(getComputedStyle(details).paddingTop) +
-        parseFloat(getComputedStyle(details).paddingBottom)
+        parseFloat(style.paddingTop) +
+        parseFloat(style.paddingBottom) +
+        parseFloat(style.borderTopWidth) +
+        parseFloat(style.borderBottomWidth)
       : details.getBoundingClientRect().height;
     details.style.overflow = 'hidden';
     const animation = details.animate([{ height: from + 'px' }, { height: to + 'px' }], {
       duration: 220,
       easing: 'cubic-bezier(.2,.8,.2,1)',
+      fill: 'forwards',
     });
-    animations.set(details, animation);
+    animations.set(details, { animation, closing });
     animation.onfinish = () => {
       details.open = !closing;
+      animation.cancel();
       details.style.overflow = '';
       animations.delete(details);
     };

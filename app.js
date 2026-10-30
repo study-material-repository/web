@@ -78,7 +78,16 @@
     if (!token || warmingToken === token) return;
     warmingToken = token;
     // Two background reads at a time, rather than a burst of Apps Script jobs.
-    await Promise.allSettled([callServer('communityTasks'), callServer('communityReviewQueue')]);
+    await Promise.allSettled([
+      callServer('memberRequestHistory', 0),
+      callServer('communityProfile'),
+      extras.load(),
+    ]);
+    await Promise.allSettled([
+      callServer('communityTasks'),
+      callServer('communityReviewQueue'),
+      chatUi.load(),
+    ]);
     let cursor = 0;
     try {
       // Warm older history too, but bound work for unusually large accounts.
@@ -156,11 +165,12 @@
     }
   }
   async function sendServer(name, ...args) {
-    window.SMRProgress?.start();
+    const silent = name === 'chatHub' || name === 'websiteData' || cachedReads.has(name);
+    if (!silent) window.SMRProgress?.start();
     try {
       return await sendServerRequest(name, ...args);
     } finally {
-      window.SMRProgress?.end();
+      if (!silent) window.SMRProgress?.end();
     }
   }
   async function sendServerRequest(name, ...args) {
@@ -316,6 +326,9 @@
           enabled: args[1],
         },
       ],
+      externalResources: ['external_resources', { ...args[0], session_token: state.token }],
+      websiteData: ['website_data', { ...args[0], session_token: state.token }],
+      chatMessage: ['chat_message', { ...args[0], session_token: state.token }],
       chatHub: ['chat_hub', { ...args[0], session_token: state.token }],
       chatSpace: ['chat_space', { ...args[0], session_token: state.token }],
       chatSend: ['chat_send', { ...args[0], session_token: state.token }],
@@ -577,7 +590,9 @@
     event.preventDefault();
     state.contextNodeId = nodeElement.dataset.nodeId;
     state.contextDepth = Number(nodeElement.dataset.depth);
-    const isFolder = nodeElement.classList.contains('tree-node-folder');
+    const isFolder =
+      nodeElement.classList.contains('tree-node-folder') ||
+      nodeElement.classList.contains('classroom-card');
     const node = snapshotNodeById(state.contextNodeId);
     state.selectedNodeId = state.contextNodeId;
     treeMenuOpen.hidden = true;
@@ -586,8 +601,8 @@
       treeMenuRequest.querySelector('span:last-child').textContent = 'Open file';
       treeMenuRequest.querySelector('.material-symbols-outlined').textContent = 'open_in_new';
     }
-    document.querySelector('#tree-menu-contribute').hidden = !isFolder;
-    document.querySelector('#tree-menu-task').hidden = !isFolder;
+    document.querySelector('#tree-menu-contribute').hidden = !isFolder || node?.external;
+    document.querySelector('#tree-menu-task').hidden = !isFolder || node?.external;
     treeMenuToggle.hidden = !isFolder;
     document.querySelector('#tree-menu-collapse-level').hidden = !isFolder;
     document.querySelector('#tree-menu-expand-level').hidden = !isFolder;
@@ -595,7 +610,10 @@
     adminManage.hidden = true;
     treeMenu.querySelectorAll('[data-admin-action]').forEach((button) => {
       button.hidden =
-        !state.member?.is_admin || !node || (button.dataset.adminAction === 'create' && !isFolder);
+        !state.member?.is_admin ||
+        !node ||
+        node.external ||
+        (button.dataset.adminAction === 'create' && !isFolder);
     });
     updateDriveMenu(node);
     if (isFolder) {
@@ -606,6 +624,11 @@
       treeMenuToggle.querySelector('.material-symbols-outlined').textContent = isOpen
         ? 'expand_less'
         : 'expand_more';
+    }
+    if (nodeElement.classList.contains('classroom-card')) {
+      treeMenuToggle.hidden = true;
+      document.querySelector('#tree-menu-collapse-level').hidden = true;
+      document.querySelector('#tree-menu-expand-level').hidden = true;
     }
     treeMenu.hidden = false;
     const menuRect = treeMenu.getBoundingClientRect();
@@ -797,6 +820,7 @@
     });
   }
   function isCoinRestricted(node) {
+    if (node.external) return false;
     const seen = new Set();
     while (node && !seen.has(String(node.id))) {
       seen.add(String(node.id));
@@ -806,24 +830,28 @@
     }
     return false;
   }
+  function openCatalogueFile(node) {
+    window.open(
+      node.web_url ||
+        'https://drive.google.com/open?id=' +
+          encodeURIComponent(node.target_drive_item_id || node.id),
+      '_blank',
+      'noopener',
+    );
+    extras.opened(node);
+  }
   async function requestAccess(node, checkOnly = false) {
     if (
       (!isCoinRestricted(node) || confirmedAccess.has(accessKey(node))) &&
       node.checkToken !== 'force'
     ) {
-      window.open(
-        node.web_url ||
-          'https://drive.google.com/open?id=' +
-            encodeURIComponent(node.target_drive_item_id || node.id),
-        '_blank',
-        'noopener',
-      );
+      openCatalogueFile(node);
       return;
     }
     if (requestInFlight || resolvePendingRequest) return;
     if (!state.member) {
       if (node.access?.mode === 'open' && node.web_url) {
-        window.open(node.web_url, '_blank', 'noopener');
+        openCatalogueFile(node);
         return;
       }
       openAccount();
@@ -902,7 +930,7 @@
         });
         requestDialog.close();
         requestCancel.textContent = 'Cancel';
-        if (open) window.open(node.web_url, '_blank', 'noopener');
+        if (open) openCatalogueFile(node);
       }
       refreshMemberCatalogueState().catch(() => {});
     } catch (error) {
@@ -1167,6 +1195,12 @@
         card.className = 'classroom-card';
         card.setAttribute('aria-label', node.name);
         card.dataset.tone = String(index % 6);
+        card.dataset.nodeId = node.id;
+        card.dataset.depth = String(trail.length);
+        card.oncontextmenu = (event) => {
+          event.stopPropagation();
+          showTreeMenu(event, card);
+        };
         const caption = document.createElement('span');
         caption.className = 'classroom-card-caption';
         caption.textContent =
@@ -1380,7 +1414,7 @@
     const node = snapshotNodeById(state.contextNodeId);
     hideTreeMenu();
     if (node?.kind === 'file') requestAccess(node, true);
-    else if (node && node.web_url) window.open(node.web_url, '_blank', 'noopener');
+    else if (node && node.web_url) openCatalogueFile(node);
   });
   treeMenuToggle.addEventListener('click', () => {
     const folder = folderById(state.contextNodeId);
@@ -2622,7 +2656,14 @@
         const card = document.createElement('article');
         card.className = 'history-row';
         const title = document.createElement('h3');
-        title.textContent = item.file;
+        if (item.file_id && /^[a-zA-Z0-9_-]+$/.test(item.file_id)) {
+          const link = document.createElement('a');
+          link.textContent = item.file;
+          link.href = 'https://drive.google.com/open?id=' + encodeURIComponent(item.file_id);
+          link.target = '_blank';
+          link.rel = 'noopener';
+          title.append(link);
+        } else title.textContent = item.file;
         const detail = document.createElement('p');
         const date = new Date(item.date);
         const when = Number.isNaN(date.valueOf()) ? '' : date.toLocaleString();
@@ -2769,6 +2810,7 @@
     showToast,
     openAccount,
   });
+  const extras = window.setupWebsiteExtras({ state, callServer, requestAccess });
   loadCachedCatalogue();
   busy(syncStatus);
   if (!state.snapshot) busy(tree);

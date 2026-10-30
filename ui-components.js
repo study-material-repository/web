@@ -24,7 +24,17 @@
       this.menu.setAttribute('role', 'listbox');
       this.menu.setAttribute('aria-label', this.label);
       select.after(this.button, this.menu);
-      this.button.onclick = () => this.open();
+      this.button.onpointerdown = () => {
+        this.wasOpen = this.menu.matches(':popover-open');
+      };
+      this.button.onclick = (event) => {
+        if (event.detail && this.wasOpen) {
+          this.wasOpen = false;
+          if (this.menu.matches(':popover-open')) this.menu.hidePopover();
+          return;
+        }
+        this.open();
+      };
       this.button.onkeydown = (event) => {
         if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
           event.preventDefault();

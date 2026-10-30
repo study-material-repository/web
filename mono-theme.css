@@ -18,7 +18,7 @@ html[data-theme='mono'] body {
   color: #222225;
 }
 html[data-theme='mono'] .classroom-card:nth-child(odd) {
-  background: #303033;
+  background: #50545b;
   color: #fff;
 }
 html[data-theme='mono'] .classroom-card:nth-child(even) {
@@ -73,7 +73,7 @@ html[data-theme='mono'] .ui-select-options button[aria-selected='true'] {
   object-fit: contain;
 }
 .catalogue-section-title {
-  text-align: right;
+  text-align: left;
 }
 .classroom-card {
   text-align: left;
@@ -139,4 +139,103 @@ body[data-network-busy] .spinner {
       transform: none;
     }
   }
+}
+
+html[data-theme='mono']
+  :is(a:not(.classroom-card):not(.brand), .tree-file-link, .file-link, .tree-link) {
+  color: #1967d2;
+}
+html[data-theme='mono']
+  :is(.task-tabs button[aria-pressed='true'], .chat-list-item[aria-current='true']) {
+  background: #d3e3fd;
+  color: #174ea6;
+}
+#activity .balance-summary {
+  gap: 12px;
+  margin-bottom: 16px;
+}
+#activity .balance-summary > div {
+  padding: 16px;
+  min-height: 0;
+}
+#send-coins-form {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+.chat-message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.chat-message-actions button {
+  border: 0;
+  background: transparent;
+  border-radius: 16px;
+  padding: 6px 10px;
+  color: inherit;
+  cursor: pointer;
+}
+.chat-message-actions button:hover,
+.chat-message-actions button[aria-pressed='true'] {
+  background: #d3e3fd;
+  color: #174ea6;
+}
+.chat-reply-preview {
+  border-left: 3px solid #8ab4f8;
+  margin: 8px 0;
+  padding: 8px;
+  color: #555;
+  white-space: pre-wrap;
+}
+
+.pixel-avatar {
+  width: 42px;
+  height: 42px;
+  background: #e8eaed;
+  border-radius: 12px;
+  padding: 6px;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+.avatar-settings {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.stats-grid > div {
+  padding: 12px;
+  background: #f1f3f4;
+  border-radius: 16px;
+}
+.stats-grid dt {
+  font-size: 12px;
+  color: #5f6368;
+}
+.stats-grid dd {
+  margin: 6px 0 0;
+  font-size: 22px;
+}
+.catalogue-extras details {
+  margin: 12px 0;
+  padding: 16px 24px;
+  background: #f1f3f4;
+  border-radius: 20px;
+}
+.catalogue-extras a {
+  display: block;
+  padding: 8px 0;
+}
+.catalogue-extras summary {
+  cursor: pointer;
+}
+.account-action-card {
+  padding: 16px !important;
 }
