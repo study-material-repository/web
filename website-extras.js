@@ -216,6 +216,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
     if (token !== state.token) {
       token = state.token;
       data = null;
+      loading = null;
       summary.replaceChildren();
       lists.replaceChildren();
     }
@@ -247,6 +248,9 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
   }
   document.addEventListener('smr-view', () => {
     lists.hidden = document.querySelector('#top').hidden;
+  });
+  document.addEventListener('smr-identity', () => {
+    if (token !== state.token) void load();
   });
   return { load, opened };
 };

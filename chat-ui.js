@@ -485,5 +485,8 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !host.hidden) load();
   });
+  document.addEventListener('smr-identity', () => {
+    if (lastToken !== state.token) void load();
+  });
   return { load };
 };

@@ -415,6 +415,7 @@
     setMessage('');
   }
   function updateAccount() {
+    document.dispatchEvent(new Event('smr-identity'));
     document.dispatchEvent(
       new CustomEvent('smr-account', { detail: { isAdmin: !!state.member?.is_admin } }),
     );
