@@ -1,3 +1,4 @@
+let emojiCatalogue;
 window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
   const host = document.querySelector('#chat');
   host.innerHTML = `
@@ -375,57 +376,82 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
         actions.className = 'chat-message-actions';
         if (!message.deleted) {
           actions.append(iconButton('reply', 'Reply', () => reply(message)));
-          const picker = document.createElement('div');
-          picker.className = 'chat-reaction-picker';
-          picker.hidden = true;
-          const react = iconButton('add_reaction', 'React', () => {
-            const opening = picker.hidden;
-            document.querySelectorAll('.chat-reaction-picker:not([hidden])').forEach((el) => {
-              el.hidden = true;
-              el.parentElement
-                .querySelector('[aria-expanded]')
-                ?.setAttribute('aria-expanded', 'false');
-            });
-            picker.hidden = !opening;
-            react.setAttribute('aria-expanded', String(!picker.hidden));
-          });
-          react.setAttribute('aria-expanded', 'false');
-          actions.append(react);
-          [
-            '👍',
-            '❤️',
-            '🎉',
-            '👀',
-            '😂',
-            '🙏',
-            '🔥',
-            '💯',
-            '👏',
-            '🤔',
-            '😮',
-            '😢',
-            '🚀',
-            '✅',
-            '💡',
-            '📚',
-            '🙌',
-            '💪',
-            '🤝',
-            '⭐',
-            '🥳',
-            '🫡',
-            '👎',
-            '😅',
-          ].forEach((emoji) => {
-            const reaction = (message.reactions || []).find((r) => r.emoji === emoji);
-            const b = button(emoji, () => {
-              picker.hidden = true;
-              changeMessage(message, 'react', { emoji, active: !reaction?.mine });
-            });
-            b.className = 'reaction-choice';
-            b.setAttribute('aria-label', 'React ' + emoji);
-            picker.append(b);
-          });
+          const choose = (emoji) => {
+            const mine = message.reactions?.some((r) => r.emoji === emoji && r.mine);
+            changeMessage(message, 'react', { emoji, active: !mine });
+          };
+          for (const emoji of ['😂', '👍', '🙏']) {
+            const quick = button(emoji, () => choose(emoji));
+            quick.className = 'quick-react';
+            quick.setAttribute('aria-label', 'React ' + emoji);
+            actions.append(quick);
+          }
+          actions.append(
+            iconButton('add_reaction', 'More reactions', async () => {
+              document.querySelector('.emoji-dialog')?.close();
+              const dialog = document.createElement('dialog');
+              dialog.className = 'emoji-dialog account-dialog';
+              dialog.setAttribute('aria-label', 'Choose a reaction');
+              dialog.innerHTML =
+                '<div class="dialog-header"><h2>Reactions</h2><button class="icon-button" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><input type="search" aria-label="Search emoji" placeholder="Search emoji"><div class="emoji-results"></div><p role="status">Loading emoji…</p>';
+              document.body.append(dialog);
+              dialog.onclose = () => dialog.remove();
+              dialog.querySelector('button').onclick = () => dialog.close();
+              dialog.onclick = (e) => {
+                const r = dialog.getBoundingClientRect();
+                if (
+                  e.target === dialog &&
+                  (e.clientX < r.left ||
+                    e.clientX > r.right ||
+                    e.clientY < r.top ||
+                    e.clientY > r.bottom)
+                )
+                  dialog.close();
+              };
+              dialog.showModal();
+              const input = dialog.querySelector('input'),
+                results = dialog.querySelector('.emoji-results'),
+                status = dialog.querySelector('[role=status]');
+              input.focus();
+              try {
+                const all = await (emojiCatalogue ??= fetch('./reaction-catalogue.json').then(
+                  (r) => {
+                    if (!r.ok) throw Error();
+                    return r.json();
+                  },
+                ));
+                const draw = () => {
+                  results.replaceChildren();
+                  const hits = all.filter(
+                    ([emoji, label]) =>
+                      label.includes(input.value.trim().toLowerCase()) ||
+                      emoji === input.value.trim(),
+                  );
+                  for (const [emoji, label] of hits.slice(0, 120)) {
+                    const b = button(emoji, () => {
+                      dialog.close();
+                      choose(emoji);
+                    });
+                    b.className = 'emoji-choice';
+                    b.title = label;
+                    b.setAttribute('aria-label', label);
+                    results.append(b);
+                  }
+                  status.textContent =
+                    hits.length > 120
+                      ? 'Search to find more emoji.'
+                      : hits.length
+                        ? ''
+                        : 'No matching emoji.';
+                };
+                input.oninput = draw;
+                draw();
+              } catch {
+                emojiCatalogue = null;
+                status.textContent = 'Could not load emoji. Close and try again.';
+              }
+            }),
+          );
           if (message.can_edit)
             actions.append(iconButton('edit', 'Edit', () => editMessage(message)));
           if (message.can_delete)
@@ -434,7 +460,6 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
                 if (confirm('Delete this message?')) changeMessage(message, 'delete');
               }),
             );
-          row.append(picker);
         }
         row.append(actions);
         if (message.reactions?.length) {

@@ -110,7 +110,7 @@
   edit.type = 'button';
   edit.className = 'tonal-button';
   edit.textContent = 'Manage tips';
-  document.querySelector('#activity .workspace-heading').append(edit);
+  document.querySelector('#admin-tools').append(edit);
   const auth = () => {
     edit.hidden = !api.isAdmin();
   };

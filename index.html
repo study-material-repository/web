@@ -14,8 +14,8 @@
     />
     <link rel="stylesheet" href="./styles.css?v=20261025" />
     <link rel="stylesheet" href="./community-layout.css?v=20261025b" />
-    <link rel="stylesheet" href="./ui-components.css?v=20261030-dashboard" />
-    <link rel="stylesheet" href="./mono-theme.css?v=20261030-dashboard" />
+    <link rel="stylesheet" href="./ui-components.css?v=20261030-expressive" />
+    <link rel="stylesheet" href="./mono-theme.css?v=20261030-expressive" />
     <style>
       #catalogue-mode {
         justify-content: flex-start;
@@ -374,14 +374,20 @@
             ><button class="tonal-button" type="submit">Send coins</button>
           </form>
         </section>
-        <h2>File requests</h2>
-        <p class="dialog-copy">
-          Newest first. Imported successful records help prioritize live verification; current Drive
-          permission determines whether a file is available.
-        </p>
-        <p id="history-status" role="status"></p>
-        <div id="history-list"></div>
-        <button id="history-more" class="text-button" hidden>Older records</button>
+        <section class="admin-tools" aria-label="Administration">
+          <h2>Administration</h2>
+          <div id="admin-tools"></div>
+        </section>
+        <section class="request-history">
+          <h2>File requests</h2>
+          <p class="dialog-copy">
+            Newest first. Imported successful records help prioritize live verification; current
+            Drive permission determines whether a file is available.
+          </p>
+          <p id="history-status" role="status"></p>
+          <div id="history-list"></div>
+          <button id="history-more" class="text-button" hidden>Older records</button>
+        </section>
       </section>
     </main>
     <dialog id="folder-picker" class="account-dialog">
@@ -743,12 +749,12 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script src="./config.js?v=20260927-admin"></script>
     <script src="./search.js?v=20261014"></script>
-    <script src="./chat-ui.js?v=20261030-dashboard"></script>
-    <script src="./motion.js?v=20261030-dashboard"></script>
-    <script src="website-extras.js?v=20261030-dashboard"></script>
-    <script src="./app.js?v=20261030-dashboard"></script>
+    <script src="./chat-ui.js?v=20261030-expressive"></script>
+    <script src="./motion.js?v=20261030-expressive"></script>
+    <script src="website-extras.js?v=20261030-expressive"></script>
+    <script src="./app.js?v=20261030-expressive"></script>
     <script src="./controls.js?v=20261023b"></script>
-    <script src="./ui-components.js?v=20261030-dashboard"></script>
-    <script src="./site-header.js?v=20261030-dashboard"></script>
+    <script src="./ui-components.js?v=20261030-expressive"></script>
+    <script src="./site-header.js?v=20261030-expressive"></script>
   </body>
 </html>

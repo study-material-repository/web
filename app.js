@@ -442,7 +442,7 @@
       refresh.id = 'admin-refresh-catalogue';
       refresh.className = 'tonal-button';
       refresh.textContent = 'Refresh Drive catalogue';
-      document.querySelector('#activity .workspace-heading').append(refresh);
+      document.querySelector('#admin-tools').append(refresh);
       refresh.onclick = async () => {
         refresh.disabled = true;
         refresh.classList.add('is-loading');

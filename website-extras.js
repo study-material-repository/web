@@ -33,6 +33,168 @@ const portraitPalette = [
   '#705139',
 ];
 const portraitPresets = [
+  '00000000000000000000000000400040l4g440440444444400444444000g4444',
+  '00000000000000000000000000hhhhh000hhhhh00hhhhhhhhhhhhhhq00002222',
+  '00000000000000000000000000lhhhh0lhlhhhhhhllhhhhhhlhhhhhh000hhhhh',
+  '00000000000000000000000000o0lhl00llhilhglllgglhg000ollls000o00o0',
+  '000000000000000000000000440ooo00444g4gg00444444000ggggg400440440',
+  '000000000000000000000000aaapvpv0a3a99q93003a33330033033300300030',
+  '000000000000000000000000pm33m3m0qmm3m33m00mm3m3m00mm00mm00m000m0',
+  '0000000000000000000000110111100111111111c1111111ccc1111000ccccc0',
+  '00000000000000000000ll000lullll00llllllllslllllllllllll202222222',
+  '00000000000000000011100001cccc11cdc1ccc11cc1ccc011cccc110cccc001',
+  '0000000000000000008888000rr888808888888888888888008888800088r880',
+  '0000000000000000hhq999909999999999999999099999990099999000090090',
+  '0000000000000000iiiiiii0iirmiiiilluu8iiihhuu8iii0hhiiiih007lhll0',
+  '00000000000000u0ll0000u0glpp0lu0llpplll00lluuuuu0l0lluuh00000000',
+  '000000000007700000oooo0000pqqp0077ooo7000o77770007soos70077ss770',
+  '00000000000bb0000bqqqqb0rbqqqqbrrbbbbbbr8rbbbbr800888r0000000000',
+  '00000000000gg000ll0gg0llllllllllllllllllllllllll000ll00000000000',
+  '0000000000900000099999000999999909q999998rq9999999v9999990v90o90',
+  '000000000099090099999900999999qqqqqqqqqqqqqqqq000qqqq00000000000',
+  '0000000000hh00000shlood0ogsoooooodoooooo00oooooo000ooooo000o00o0',
+  '0000000000hlhu000huluuh0uuhlsluuhhulluhhluulluulhhh11hhh000dd000',
+  '0000000000mmm0000mqmm000amqmmm000mmmmmmm00mmm3mm000mmmm000033300',
+  '0000000000ooo000ogvoop90p9ooo999q9ooo999q9ooo99900ovv09000090090',
+  '0000000000pppp000pppppp0op9999poopqqqqpoooqhhqoo0opllpo000qqqq00',
+  '0000000000rrrr00rrqrrqrrrporroprrporroprrrqrrqrr00rrrr0000000000',
+  '0000000009900000p99999900p9999990999999p000099po00oovvvo00ooooo0',
+  '000000000h0000000sshhoo0ooohlooooolhlooo00hsllll000hhhl0000h00h0',
+  '000000000hhhhhh0llhhhhllllhhhhll0llggll00hhoohh000hllh0000000000',
+  '000000000l000000hl003300hhq3mm300h3m33m3hhqmmmm3hhhu3m330hhhuquh',
+  '000000000l0llll000lllll00llllll00llllll00lllll000llll0l000000000',
+  '000000000mmmm000ii8imii0hh8r8iiiiiiiiiii0iiiiiii00iiiiii000iiii0',
+  '000000000p099990999999900999999900999999009999900099009000090090',
+  '0000000040000c0c4uuuu0c0uu4uuu0cuu4uuuh00uu4uuu00uuuu4uu000uuuu0',
+  '0000000099909900099999900999999909999999009999900009009000090090',
+  '000000009po000079999999o00999999009999900p900p900o9ov99000000v00',
+  '00000000hhtctc00hhhtcchhlhhhhhhh0ulllhll088ruu008888880088888800',
+  '00000000qqrrrh00qr8i88h0qrr8rrrh0urr88rh0pirrr8q00uhhhl000000000',
+  '00000000s0ssss0sssssssssssssssss0ssssss00ssssss000ssss000s0000s0',
+  '000000770go00007oo700007so77777700777770007oso700077077000770770',
+  '000000mm03m0000mqqm0000mrrmm3mmm00mmmmm000mm8mm0003m0am000am0am0',
+  '000009000000qqq00q00qqqqqqqqqqqqqqqqq9qqqqq0qqqqqqq0qqqq00000qqq',
+  '00000ccc0000c1dc0eeccc1ceellecc000lelc000qelle003mq0ee003300e000',
+  '00000llg0000lh770000llg000000gh00lsollll7777ghho0077777700077770',
+  '00000ovv000q9voo00qq99900qqqqq000qqqq0000qqq000099q0000000000000',
+  '00004vo000qquv00qqqqppqqqqpppqqqqqqqqqqq0qqqqqpv0vpppp44ovv00400',
+  '00004vo000qquv00uqulhlqqqqlcclqqqqquqqqq0qqqqqpv0vpppp44vvv00400',
+  '0000cccc00ccccc00c11cccc0c11ccccccccctcc0000cccc000cccc0000cc000',
+  '0000l000000lll000lsglll0llllllllggllllll00000lslllllllssll000000',
+  '0000llhl0000llrlh00hhhhlhhhhhhhhhhhglhhhhhhlhhhhhllhhhhh0hhhhh00',
+  '0000mu00000mu000004uum40444umu00044uu400004400000044000000400000',
+  '0000oo000g4go4400444444044uuuuh009puhu90099999900099990000999900',
+  '0000ooo0000444440044g44444uu4444444444440040444400004440000044g0',
+  '0000ooo00oogg400044gp440044qq0440400q000040qq000000qq0000009q000',
+  '0000q220000029q00222q2q00q92qq20220qqq202200q0qq02q0q2qq00q02q20',
+  '00022000000rr00000iiii0000hiih0000uqqu00008aa8000iirrii000iqqi00',
+  '0002200000222200002222002222222222222222022222200022220000000000',
+  '0002200000qqqq0002quuq2022uuuu2222qqqu222229922222qqqq22uuuuuuuu',
+  '000220000292200232922222022222920022292200022220000022a000003000',
+  '00022000tc022000q0222200qqqqqq20q2rqqr20q0rqqr00mq2mm220qq2qq220',
+  '0002q000008bb800088bb8000r8bb88000rrr8004440u4440444444000044000',
+  '0002q000t0020r0000022200002200q2q22qqq20022022rt0022220000022000',
+  '000330000033330003mmmm30thmqqmhtttrmmrtttttuuttt0r2qq2r00m2222m0',
+  '0003330000mm33000mm3333m0qq333mmmmmmmmmmmmmmmmmm0mmmmm0000033300',
+  '0004400000044000004gg400004gg40004g44g400ggoogg0044vv440000oo000',
+  '0004400000444444044444444444444444444444444444400444440000044000',
+  '0004444000244444000000440440004444044044444444444444444444400444',
+  '0007vvv0000700vv000700vv000000vovv0vvvvvpppvppp0999pp99009000000',
+  '0008800000r8br0088bbrr888br88b888rbrrbr808br8r80088brb8000800800',
+  '00099000099999900qqqqqq0qqpllpqqqqqqqqqq0qqqqqq009qooq9000qqqq00',
+  '000bb00002b88b2002r88r2002b88b2000buub0002qllq200qr88rq088800888',
+  '000gp30000olqp0007h66h7007i66i707o6666o777i66i770ol66lo003qrrq30',
+  '000ii0000m8hii00mmr8ii0000iiiii000iiiii00hhlhlh00o77ooo077777777',
+  '000mm00000mmmm000m9mm9m00mm33mm00mmmmmm0mmmmmmmm00mmmm0000033000',
+  '000mm00000mmmm000m9mm9m00um33mu0hummmmuhi8rrrm8i0iiii8i000iiii00',
+  '000oo00000dood00de999eeo02ee9v20o9e9e99o09e999e0o9eeeo9o00299900',
+  '000vpo00022pmp00022qmp00vp992v00vmmq2po0oppvp4400000o44400000044',
+  '0022q20008b2b2b0b882q2rb2bq28b222222q22200hhhh0000hhhh0000hhhh00',
+  '0033330003399330039oo930039oo93003a99a3000333300ooovvooo0oooooo0',
+  '0044400000404qq00040222000u022q00uuh22200uuh022000uu000000040000',
+  '004440000444404444u4404004444044044400440o4400440044444400444440',
+  '0044440000444400044444404444444444444444444044440000400000004400',
+  '004444000444444044444444444444444444444404444440004vv400000oo000',
+  '009000000q990000qqq990900qq99p99o99q99p9099qq9p9000qq99900099990',
+  '00900000lqp000qqrr99000q00rqqqqq00rqqqq000qurqq0009q00qq009q009q',
+  '0099ee0000999e0009999ee009999ee000v99v0000oooo00000oo00000000000',
+  '0099o77000op9po700q9999v0qqp99990q999999qq9999999999099999900099',
+  '00b22b000r8bb8r02bb88bb22b6666b2bbr66rbbbb8ii8bb02qbbq20002bb200',
+  '00c000000cc000010c00001111110001111111111s11111c111111c0ccccccc0',
+  '00d00d00000oo00000lggl00hhhhhhhhhhlgglhh00qqqq0000oooo00000qq000',
+  '00h00000hhhhlhh0hlhhlhhhhlhhlhhhhllllhhhhhhhhhhhhhhhhhh00hhh0hh0',
+  '00hh00000qhh00000hhhh0h00hhhhhh000hlhhh0000lhl00000aq000000a3000',
+  '00hh00h0000hh0hh000hh0hh0hhhhhhh0uhhhhh004uluh00000lhhhh000440h0',
+  '00hhhh000hhhhhh0hl7ll7lhhg7ll7ghhhhhhhhh0hhllhh00hhhhhh000hhhh00',
+  '00iihh000htihii00hhaaii00iiaahh00ithith000hhhi000044440000044000',
+  '00iiii0000iihh000ilhlgii0iiihhiiiiigohiiiiig7li0i0iihtii00iiiiii',
+  '00llll000llllll00llllll00llllll00llllll0lllllllllllllllllll00lll',
+  '00lqql000cccccc0qthtthtqqtqttqtquctcctcu0tttttt01cccccc111111111',
+  '00mr880088rqb80088b2br8808r22qb888bbb888r888bru44uur8r400444u400',
+  '00o000000voo0000mmvo000000g0qqq00rrqqrug09qhiiil00hiiii000000000',
+  '00o00o00000oo0000oooooo000vvvv000ovoovo00ovoovo00o9oo9o00o0990o0',
+  '00oooo000dooood00dooood0sossssosossllsso0slssls00ssssss00osssso0',
+  '00q00000gqp000o0qqpvop0000lq4qq000pqpqqq00quqqqq009q00qq009q009q',
+  '00q00000pqp000e0qqpv0e0000pq900000p9q90000qqpq0000qqqqqq00qqqqqq',
+  '00thg77000slhgo700lhhllg0llhlllg0llllllhohllllghssll0lhg777000lh',
+  '00u0004000u40uuu00u4p0u0u40p44000up444000pp440000p4440000p000000',
+  '0200092002290220022ee220002222000092220000999900009ee90000099000',
+  '022000002hh00000aiii00ii2iiiiiii0iiiiiii0iiiiii000iiii0000033300',
+  '02200000hq222220s02222220022qbq200228rb00000br0000008000000rr000',
+  '02a33a200aaaaaa03aa33aa33a3883a3aaarraaa2aaaaaa2033aa33000322300',
+  '0440044044444444044444400044440044444444444444440440444000004400',
+  '04440000344400003q4440000044440000l4444000ql4440000qll440000l000',
+  '04440000440000004400000044000000444444000444440004444440o4004444',
+  '0444000044440000p4440000004444000044440000g444000004444400og4044',
+  '044o0000444440000ooog44o00000o4000000o44000000g404444g4004000400',
+  '0990099009e00e909e0ee0e9ee2992eee229922eee2222ee0ee22ee000e00e00',
+  '099oo9900qqqqqq00pqqqqp00o9999o00o9999o00o9999o000999900003pp300',
+  '099q0999qqqq0999qqqq9999qq99990900099999000999990099999900999990',
+  '0ao77oa00v9299v07o2222o77sv99vs779q229977e9229e77ollllo707922970',
+  '0hh00hh0h8rhhr8hhrhhhhrhhhhhhhhh0hllllh000llll00lllhhlll0l0000l0',
+  '0hhh0000hhhhhhh00hhhhhh00hhhhhl00hhhhhlh00hhhllh00hhhll0000hhhh0',
+  '0hi00000ahi000000ii000000i00i000iiiiiii0iiiiiiitiiiiiit00iiiti00',
+  '0hl000000hh000000hhh00000lhhhh000llhhhh00ssllllh0000000o00000077',
+  '0l0hl0l00shllhs00hhhhhh0hlossolhloossoolssllllssslhllhlg000hh000',
+  '0ll00000lglu0000lluuh0000uuuul0000hulll0000lllll0000lll000000l0l',
+  '0ll00000llll00h0lhll00hh0hllhhh00hhhhhh000lhlhh000lh0lh000lh0ll0',
+  '0mm000000hh00000hhhhhhhhthhhhhhh00hhhhhh00hhhhh0000h00h0000h00h0',
+  '0o0000o0000ss00000hlll00thhllhht0oolloo000ollo00000ll0000o0000o0',
+  '0o0000o000ooooo00osoosd00hhgghl00ihllhi00ilosli00goooog00o0od0o0',
+  '0o0000o00d0000d00oooooo00odoodo000oooo000oooooo000oooo000o0000o0',
+  '0o0o0000ooooo0000ooo00000ooo00000000ooo0000ooooo0000ooo00000ooo0',
+  '0o0oo0o00o4444o00g4444g004444440o444444o04444440044444g000444400',
+  '0od00000ddoo0000doodoo000doooo0000ooooo000oooood0000oooo00000ooo',
+  '0oooooo0o999999ooummmmuoo9qqqq9ooouqquoo0o8uu8o00oqrrqo000ovvo00',
+  '0ooqqoo0oo9qq9ooovqqqqvoopgppgpo0qurruq00u8ll8u000rrrr0000022000',
+  '0q000000qqq0000000q0000000qqqqq000qqqqq000qqqqq000qq00q0000000q0',
+  '0qq000000qq00000qqq000000qqq00000qqqq0000qqqqq00000qqq00000q0qqq',
+  '0qq00000mm30000000ap000000m9000000mm3aa000ammmp000am3390009q9aq0',
+  '0qq00qq0q2qmmq2qqqmmmmqqqqmmmmqq8rvqqvr888urru88qqqrrqqq0q8888q0',
+  '0u4004u0uhu44uhu4uu44uu44444444444444444uuuhhuuuhhhhhhhh00hhhh00',
+  '1l8888l11h8888h188o88vr888rrrr888b8q98b88rqrrqr808r22r8000888800',
+  '2000000002qhlls000uhhhls00hhhhhl00hhhhhl0hhhhhhh0hh00hhh00000hhh',
+  '22220020222222202222222009222222000000220000002200000099000000e9',
+  '22e22o0022loeg002q6ppi0022r99q22299999222eprrp0002q22r0002222000',
+  '3m0000m3a3mmmm3a3mmmmmm3mmmmmmmmmmpmmpmmrrmqqmrr8ruqqur800mmmm00',
+  '4440000004440000000404440004444000044000000440000004400000044000',
+  '44gg400044444g404444u4g0044uuu440044444400444444000g44400004g440',
+  '80hhhh088hhhhhh8hhlhhlhhhhhhhhhhhrrrrrrhrrqrrqrrrrrrrrrr0rrrrrr0',
+  '99099099v999999v99999999q9v99v9qqqooooqq9hvvvvh99poooop909999990',
+  'a000000a29a00a9229aaaa92aa9aa9aaaa9aa9aaqrraarrq00qppq00000aa000',
+  'hh0000hh0hh00hh00hh00hh00hhhhhh000hhhh000hlhhlh00hhiihh00hhtthh0',
+  'hhh00000hhh000000hh00000hlhhhh00hlhhhhh0hhhhhhhh00hhhhhh00hhhhh0',
+  'l000000llhl00lhllhllllhl0llllll0llhllhlllhhllhhl00llll00000ll000',
+  'lll00000llll00000llll00000lll00000lll000000lllll0000llll0000lll0',
+  'lp0ppooolvolp000lp0lpll0lp0lglullllllglllllllglollllll000llll000',
+  'o0o00o0oooooooooovoooovoprq99qrp0q9999q00099990000999900000pp000',
+  'oghiihgoohiiiiholihhhhilihoggohiihsllshiiiilliii0i6hh6i0006hh600',
+  'q99000l0q990dosl09voooos0oooooos0oooooos0oooooss00oooo0000333000',
+  'qq9999qqqq9999qq9999999999p99p9999p99p999qqggqq90qqqqqq000q99q00',
+  'qrqppqrqrrm99mrrqqqppqqqpqqqqqqpvqqqqqqvlhiuuihl7l6hh6l7006qq600',
+  'rr08808rbb8888bbb888888b8l8rr8l88rq22qr88r9999r8r8b22b8r00rbbr00',
+  's000000s11d77d1111cddc11sccllccs0dssssd001c11c1001cssc100ds00ss0',
+  '0033330003333330333333003333000033330000333333000333333000333300',
   '000eeel0000jjjbe00v8qeu700p88r9800oruu9u0oequhu0lplhccgl00p000s0',
   '000fffgo0004kk4400opp8rg00vr90pv00o8q7qq074u8qqqou4cccll00g70070',
   '00oloee00hhi2jjh0q2r8ii20jj8888j0bqrr8uq0llru8qg0uhc6igp00ov0ee0',
@@ -316,9 +478,12 @@ window.smrAvatar = function (seed) {
     copy.removeAttribute('tabindex');
     copy.setAttribute('role', 'img');
     copy.style.cssText = 'width:min(60vw,300px);height:auto;display:block';
-    close.textContent = 'Close';
+    close.className = 'icon-button';
+    close.setAttribute('aria-label', 'Close');
+    close.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">close</span>';
+    d.className = 'avatar-preview';
     close.onclick = () => d.close();
-    d.append(copy, close);
+    d.append(close, copy);
     document.body.append(d);
     d.onclose = () => d.remove();
     d.showModal();
@@ -385,6 +550,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
   arrange();
   function render() {
     if (!data) return;
+    document.querySelectorAll('#admin-tools [data-extra]').forEach((el) => el.remove());
     summary.replaceChildren();
     const portrait = document.createElement('div');
     portrait.className = 'avatar-settings';
@@ -414,22 +580,37 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
       box.append(dt, dd);
       grid.append(box);
     }
+    const heading = document.createElement('h2');
+    heading.textContent = 'Your activity';
+    summary.insertBefore(heading, portrait);
     summary.append(grid);
     if (data.admin) {
       const manage = document.createElement('button');
       manage.className = 'tonal-button';
       manage.textContent = 'External resources';
       manage.onclick = manageResources;
-      summary.append(manage);
+      manage.dataset.extra = '';
+      manage.insertAdjacentHTML(
+        'afterbegin',
+        '<span aria-hidden="true" class="material-symbols-outlined">library_books</span>',
+      );
+      document.querySelector('#admin-tools').append(manage);
       const admin = document.createElement('dialog');
       admin.className = 'repository-dashboard';
       const launch = document.createElement('button');
       launch.className = 'tonal-button';
       launch.textContent = 'Repository dashboard';
       launch.onclick = () => admin.showModal();
-      summary.append(launch);
+      launch.dataset.extra = '';
+      launch.insertAdjacentHTML(
+        'afterbegin',
+        '<span aria-hidden="true" class="material-symbols-outlined">dashboard</span>',
+      );
+      document.querySelector('#admin-tools').append(launch);
       const close = document.createElement('button');
-      close.textContent = 'Close dashboard';
+      close.className = 'icon-button';
+      close.setAttribute('aria-label', 'Close');
+      close.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">close</span>';
       close.onclick = () => admin.close();
       admin.append(close);
       const title = document.createElement('h1');
@@ -558,7 +739,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
     const modal = document.createElement('dialog');
     modal.className = 'account-dialog';
     modal.innerHTML =
-      '<div class="dialog-scroll"><div class="dialog-header"><h2>Edit avatar</h2><button class="icon-button" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><div class="avatar-palette" aria-label="Colours"></div><div class="avatar-editor-grid" aria-label="Pixel canvas"></div><button class="tonal-button" type="button" data-random>Random portrait</button><button class="text-button" type="button" data-clear>Clear</button><button class="tonal-button" type="button" data-save>Save avatar</button><p role="status"></p></div>';
+      '<div class="dialog-scroll"><div class="dialog-header"><h2>Edit avatar</h2><button class="icon-button" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><div class="avatar-palette" aria-label="Colours"></div><div class="avatar-editor-grid" aria-label="Pixel canvas"></div><button class="tonal-button" type="button" data-random>Random portrait</button><button class="text-button" type="button" data-clear>Clear</button><button class="tonal-button" type="button" data-save>Save avatar</button><div class="save-track" role="progressbar" aria-label="Saving avatar" hidden></div><p role="status"></p><small>Additional pixel art adapted from <a href="https://github.com/twitter/twemoji">Twemoji</a> by Twitter and contributors, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small></div>';
     document.body.append(modal);
     modal.querySelector('[aria-label=Close]').onclick = () => modal.close();
     modal.onclose = () => modal.remove();
@@ -619,6 +800,8 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
     };
     modal.querySelector('[data-save]').onclick = async (e) => {
       e.target.disabled = true;
+      modal.querySelector('.save-track').hidden = false;
+      modal.querySelector('[role=status]').textContent = 'Saving avatar…';
       try {
         data = await callServer('websiteData', {
           operation: 'avatar',
@@ -629,6 +812,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
       } catch (error) {
         modal.querySelector('[role=status]').textContent = error.message;
       } finally {
+        modal.querySelector('.save-track').hidden = true;
         e.target.disabled = false;
       }
     };
@@ -719,6 +903,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
       token = state.token;
       data = null;
       loading = null;
+      document.querySelectorAll('#admin-tools [data-extra]').forEach((el) => el.remove());
       summary.replaceChildren();
       lists.replaceChildren();
     }
