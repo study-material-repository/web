@@ -239,3 +239,386 @@ html[data-theme='mono']
 .account-action-card {
   padding: 16px !important;
 }
+/* Shared blue tonal surfaces. Remove the theme attribute to restore the base palette. */
+:root[data-theme='mono'] {
+  --md-sys-color-primary: #1967d2;
+  --md-sys-color-on-primary: #fff;
+  --md-sys-color-primary-container: #d3e3fd;
+  --md-sys-color-on-primary-container: #174ea6;
+  --md-sys-color-secondary-container: #e8f0fe;
+  --md-sys-color-surface: #fff;
+  --md-sys-color-surface-container: #edf3fc;
+  --md-sys-color-surface-container-low: #f7faff;
+  --md-sys-color-surface-container-high: #e3edfc;
+  --md-sys-color-surface-container-highest: #d3e3fd;
+  --md-sys-color-on-surface: #1f304b;
+  --md-sys-color-on-surface-variant: #526581;
+}
+html[data-theme='mono'] body {
+  background: #f8faff;
+  color: #1f304b;
+}
+html[data-theme='mono']
+  :is(
+    .catalogue-card,
+    .workspace-card,
+    .task-row,
+    .review-card,
+    .chat-thread,
+    .chat-layout aside,
+    .tip-editor-row
+  ) {
+  background: #edf3fc;
+}
+html[data-theme='mono'] :is(.tonal-button, .ui-select-trigger, .ui-select-options) {
+  background: #d3e3fd;
+  color: #174ea6;
+}
+html[data-theme='mono']
+  :is(.catalogue-crumb, .mascot-tip, .unit-content > .tree-node-folder > .tree-row) {
+  color: #526581;
+}
+html[data-theme='mono'] :is(.classroom-card, .resource-card):nth-child(odd) {
+  background: #3569ad;
+  color: #fff;
+}
+html[data-theme='mono'] :is(.classroom-card, .resource-card):nth-child(even) {
+  background: #d3e3fd;
+  color: #174ea6;
+}
+html[data-theme='mono'] .resource-card {
+  text-decoration: none;
+}
+.resource-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.catalogue-extras .resource-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  border-radius: 20px;
+  overflow-wrap: anywhere;
+}
+.resource-card .material-symbols-outlined {
+  font-size: 28px;
+}
+#activity .account-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+  margin: 16px 0;
+}
+#activity .account-overview > :is(.balance-summary, .contributor-profile, .account-action-card) {
+  margin: 0;
+  padding: 20px;
+  border-radius: 24px;
+  background: #edf3fc;
+  min-width: 0;
+}
+#activity .account-overview .balance-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#activity .account-overview .balance-summary > div {
+  padding: 0;
+  background: transparent;
+}
+#activity .account-overview #send-coins-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+#activity .account-overview h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+.stats-grid > div,
+.catalogue-extras details {
+  background: #edf3fc;
+}
+#chat .chat-layout {
+  height: calc(100dvh - 245px);
+  min-height: 420px;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 0;
+  background: #fff;
+  border-radius: 24px;
+  overflow: hidden;
+}
+#chat .chat-layout aside {
+  padding: 16px;
+  overflow: auto;
+  border-radius: 0;
+  background: #f7faff;
+}
+#chat .chat-thread {
+  min-height: 0;
+  border-radius: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #edf3fc;
+}
+#thread-header {
+  padding: 10px 16px;
+  gap: 10px;
+  background: #f7faff;
+  flex-shrink: 0;
+}
+#thread-header h2 {
+  font-size: 17px;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#chat #chat-feed {
+  min-height: 0;
+  max-height: none;
+  padding: 16px 24px;
+  gap: 6px;
+  overflow: auto;
+}
+#chat .chat-bubble {
+  position: relative;
+  max-width: min(75%, 620px);
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: #fff;
+  min-width: 110px;
+}
+#chat .chat-bubble.mine {
+  background: #d3e3fd;
+}
+#chat .chat-bubble p {
+  margin: 0 0 3px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#chat .chat-bubble strong {
+  display: block;
+  font-size: 12px;
+  color: #1967d2;
+  margin-bottom: 4px;
+}
+#chat .chat-bubble small {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 10px;
+  line-height: 16px;
+  color: #526581;
+}
+#chat .chat-receipt {
+  font-size: 17px;
+  line-height: 17px;
+  color: #607080;
+}
+.chat-receipt.read {
+  color: #1967d2 !important;
+}
+#chat .chat-message-actions {
+  position: absolute;
+  right: 0;
+  top: -34px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  margin: 0;
+  padding: 2px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 2px 8px #1f304b20;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+}
+#chat .chat-bubble:hover .chat-message-actions,
+#chat .chat-bubble:focus-within .chat-message-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+#chat .chat-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 6px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #526581;
+}
+#chat .chat-action .material-symbols-outlined {
+  font-size: 20px;
+}
+#chat .chat-reaction-picker {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 2px 8px #1f304b30;
+  z-index: 3;
+}
+#chat .chat-reaction-picker[hidden] {
+  display: none;
+}
+#chat .reaction-choice {
+  width: auto;
+  min-width: 34px;
+  min-height: 32px;
+  border: 0;
+  background: #e8f0fe;
+  border-radius: 20px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.chat-reactions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.chat-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+.chat-unread {
+  align-self: stretch;
+  text-align: center;
+  font-size: 12px;
+  color: #1967d2;
+  border-block: 1px solid #c2d7f8;
+  padding: 6px;
+  margin: 8px 0;
+}
+#chat .chat-date {
+  margin: 4px 0 8px;
+  font-size: 11px;
+}
+#message-compose {
+  padding: 10px;
+  gap: 8px;
+  background: #f7faff;
+}
+#message-compose textarea {
+  min-height: 42px;
+  padding: 12px 16px;
+  background: white;
+  resize: none;
+}
+#message-compose button {
+  min-height: 42px;
+  height: 42px;
+}
+.avatar-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  max-width: 294px;
+  margin: 16px auto;
+  touch-action: none;
+}
+.avatar-editor-grid button {
+  aspect-ratio: 1;
+  border: 1px solid #dadce0;
+  border-radius: 3px;
+  min-width: 0;
+  padding: 0;
+  cursor: crosshair;
+}
+.avatar-palette {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.avatar-palette button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+.avatar-palette button[aria-pressed='true'] {
+  outline: 2px solid #1967d2;
+  outline-offset: 2px;
+}
+.usage-chart {
+  display: flex;
+  align-items: end;
+  height: 120px;
+  gap: 4px;
+  margin: 16px 0;
+}
+.usage-chart > div {
+  flex: 1;
+  background: #8ab4f8;
+  border-radius: 4px 4px 0 0;
+  min-height: 2px;
+}
+.usage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.usage-table td,
+.usage-table th {
+  padding: 8px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid #d3e3fd;
+}
+@media (max-width: 900px) {
+  #activity .account-overview {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  #chat.thread-open .chat-layout {
+    height: calc(100dvh - 180px);
+    min-height: 320px;
+    grid-template-columns: 1fr;
+  }
+  #chat .chat-layout {
+    grid-template-columns: 1fr;
+  }
+  #thread-header .chat-back {
+    display: inline-flex;
+    flex: 0 0 36px;
+    padding: 6px;
+  }
+  #chat .chat-bubble {
+    max-width: 88%;
+  }
+  #chat #chat-feed {
+    padding: 16px 12px;
+  }
+  #chat .chat-message-actions {
+    top: auto;
+    bottom: 100%;
+  }
+  #chat .chat-bubble:focus-within {
+    z-index: 3;
+  }
+  .resource-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

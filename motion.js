@@ -62,6 +62,7 @@
         parseFloat(style.borderTopWidth) +
         parseFloat(style.borderBottomWidth)
       : details.getBoundingClientRect().height;
+    details.style.boxSizing = 'border-box';
     details.style.overflow = 'hidden';
     const animation = details.animate([{ height: from + 'px' }, { height: to + 'px' }], {
       duration: 220,

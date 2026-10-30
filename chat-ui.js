@@ -46,12 +46,15 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
   const drafts = new Map(),
     snapshots = new Map();
   let replyTo = null,
+    editing = null,
     preloading = false;
+  const unreadMarkers = new Map();
   const replyBanner = document.createElement('div');
   replyBanner.className = 'chat-reply-preview';
   replyBanner.hidden = true;
   compose.before(replyBanner);
   function reply(message) {
+    editing = null;
     replyTo = message;
     replyBanner.replaceChildren();
     replyBanner.hidden = !message;
@@ -59,7 +62,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       replyBanner.append(
         document.createTextNode('Reply to ' + message.sender + ': ' + message.body.slice(0, 120)),
       );
-      replyBanner.append(button('Cancel', () => reply(null)));
+      replyBanner.append(iconButton('close', 'Cancel', () => reply(null)));
       $('message-body').focus();
     }
   }
@@ -95,6 +98,32 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     b.textContent = label;
     b.onclick = handler;
     return b;
+  }
+  function iconButton(icon, label, handler) {
+    const b = button('', handler);
+    b.className = 'icon-button chat-action';
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    const i = document.createElement('span');
+    i.className = 'material-symbols-outlined';
+    i.setAttribute('aria-hidden', 'true');
+    i.textContent = icon;
+    b.append(i);
+    return b;
+  }
+  function editMessage(message) {
+    reply(null);
+    editing = message;
+    replyBanner.hidden = false;
+    replyBanner.textContent = 'Edit message';
+    replyBanner.append(
+      iconButton('close', 'Cancel edit', () => {
+        reply(null);
+        $('message-body').value = '';
+      }),
+    );
+    $('message-body').value = message.body;
+    $('message-body').focus();
   }
   function setup(next) {
     if (!state.token) return openAccount();
@@ -136,6 +165,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       selected = null;
       drafts.clear();
       snapshots.clear();
+      unreadMarkers.clear();
       reply(null);
       $('message-body').value = '';
       $('thread-header').innerHTML = '<h2>Choose a conversation</h2>';
@@ -194,6 +224,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
         const b = button(item.label + (item.unread ? ' · ' + item.unread : ''), () =>
           select({ kind, id: item.id }),
         );
+        if (kind === 'dm' && window.smrAvatar) b.prepend(smrAvatar(item.avatar_seed || item.label));
         if (selected?.id === item.id) b.setAttribute('aria-current', 'true');
         list.append(b);
       });
@@ -220,15 +251,15 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     const title = document.createElement('h2');
     title.textContent = data.thread.label;
     header.append(title);
-    if (data.thread.id === 'smr-help')
-      header.append(button('Report a bug or suggest a feature', ticket));
+    if (data.thread.kind === 'dm' && window.smrAvatar)
+      header.prepend(smrAvatar(data.thread.avatar_seed || data.thread.label));
     if (data.thread.id === 'smr-tasks') {
       const a = document.createElement('a');
       a.href = '#contribute';
       a.textContent = 'Open task board';
       header.append(a);
     }
-    const back = button('‹ Conversations', () => select(null));
+    const back = iconButton('arrow_back', 'Conversations', () => select(null));
     back.classList.add('chat-back');
     header.prepend(back);
     if (data.thread.kind === 'space') {
@@ -268,6 +299,8 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
         header.append(tasks);
       }
     }
+    const key = draftKey(selected);
+    if (!unreadMarkers.has(key)) unreadMarkers.set(key, data.unread_from);
     const serialized = JSON.stringify(data.messages);
     if (serialized !== lastRender) {
       const atEnd = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
@@ -287,8 +320,15 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
           feed.append(separator);
           previousDay = day;
         }
+        if (message.id === unreadMarkers.get(key)) {
+          const unread = document.createElement('div');
+          unread.className = 'chat-unread';
+          unread.textContent = 'Unread messages';
+          feed.append(unread);
+        }
         const row = document.createElement('article');
         row.className = 'chat-bubble ' + (message.mine ? 'mine' : '');
+        row.tabIndex = 0;
         const sender = document.createElement('strong');
         sender.textContent = message.mine ? 'You' : message.sender;
         const body = document.createElement('p');
@@ -309,15 +349,21 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
           hour: '2-digit',
           minute: '2-digit',
         });
+        if (message.edited) meta.prepend(document.createTextNode('Edited · '));
         if (message.mine) {
           const receipt = document.createElement('span');
-          receipt.textContent = message.read_count ? ' ✓✓' : ' ✓';
-          receipt.title = message.read_count ? 'Read by ' + message.read_count : 'Sent';
+          receipt.className =
+            'material-symbols-outlined chat-receipt' + (message.read_count ? ' read' : '');
+          receipt.textContent = message.read_count || message.delivered_count ? 'done_all' : 'done';
+          receipt.title = message.read_count
+            ? 'Read by ' + message.read_count
+            : message.delivered_count
+              ? 'Delivered'
+              : 'Sent';
           receipt.setAttribute('aria-label', receipt.title);
           meta.append(receipt);
         }
-        if (window.smrAvatar) row.append(smrAvatar(message.avatar_seed || message.sender));
-        row.append(sender);
+        if (data.thread.kind === 'space' && !message.mine) row.append(sender);
         if (message.reply) {
           const quote = document.createElement('blockquote');
           quote.className = 'chat-reply-preview';
@@ -328,24 +374,50 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
         const actions = document.createElement('div');
         actions.className = 'chat-message-actions';
         if (!message.deleted) {
-          actions.append(button('Reply', () => reply(message)));
+          actions.append(iconButton('reply', 'Reply', () => reply(message)));
+          const picker = document.createElement('div');
+          picker.className = 'chat-reaction-picker';
+          picker.hidden = true;
+          const react = iconButton('add_reaction', 'React', () => {
+            picker.hidden = !picker.hidden;
+            react.setAttribute('aria-expanded', String(!picker.hidden));
+          });
+          react.setAttribute('aria-expanded', 'false');
+          actions.append(react);
           ['👍', '❤️', '🎉', '👀'].forEach((emoji) => {
             const reaction = (message.reactions || []).find((r) => r.emoji === emoji);
-            const b = button(emoji + (reaction ? ' ' + reaction.count : ''), () =>
-              changeMessage(message, 'react', { emoji, active: !reaction?.mine }),
-            );
+            const b = button(emoji, () => {
+              picker.hidden = true;
+              changeMessage(message, 'react', { emoji, active: !reaction?.mine });
+            });
+            b.className = 'reaction-choice';
             b.setAttribute('aria-label', 'React ' + emoji);
-            b.setAttribute('aria-pressed', String(!!reaction?.mine));
-            actions.append(b);
+            picker.append(b);
           });
+          if (message.can_edit)
+            actions.append(iconButton('edit', 'Edit', () => editMessage(message)));
           if (message.can_delete)
             actions.append(
-              button('Delete', () => {
+              iconButton('delete', 'Delete', () => {
                 if (confirm('Delete this message?')) changeMessage(message, 'delete');
               }),
             );
+          row.append(picker);
         }
         row.append(actions);
+        if (message.reactions?.length) {
+          const reactions = document.createElement('div');
+          reactions.className = 'chat-reactions';
+          for (const reaction of message.reactions) {
+            const b = button(reaction.emoji + ' ' + reaction.count, () =>
+              changeMessage(message, 'react', { emoji: reaction.emoji, active: !reaction.mine }),
+            );
+            b.className = 'reaction-choice';
+            b.setAttribute('aria-pressed', String(reaction.mine));
+            reactions.append(b);
+          }
+          row.append(reactions);
+        }
         feed.append(row);
       });
       if (!data.messages.length) {
@@ -356,41 +428,6 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       if (atEnd || !lastRender) feed.scrollTop = feed.scrollHeight;
       lastRender = serialized;
     }
-  }
-  function ticket() {
-    const d = document.createElement('dialog');
-    d.className = 'account-dialog';
-    d.innerHTML =
-      '<div class="dialog-scroll"><form class="task-form"><div class="dialog-header"><h2>Help & ideas</h2><button type="button" aria-label="Close" class="icon-button">×</button></div><label>Type<select name="kind"><option>Bug report</option><option>Feature request</option></select></label><label>Title<input name="title" required maxlength="120"></label><label>Steps to reproduce or proposed behaviour<textarea name="steps" required maxlength="1200"></textarea></label><label>Expected result<textarea name="expected" required maxlength="800"></textarea></label><label>What happened instead / why this would help<textarea name="actual" required maxlength="800"></textarea></label><p class="dialog-copy">Shared with the community. Do not include passwords or verification codes.</p><button class="tonal-button">Post</button><p role="status"></p></form></div>';
-    document.body.append(d);
-    d.querySelector('[aria-label=Close]').onclick = () => d.close();
-    d.onclose = () => d.remove();
-    d.showModal();
-    const f = d.querySelector('form');
-    f.onsubmit = async (e) => {
-      e.preventDefault();
-      const b = f.querySelector('button.tonal-button');
-      b.disabled = true;
-      try {
-        await callServer('chatSend', {
-          space_id: 'smr-help',
-          message_id: crypto.randomUUID(),
-          body: [
-            f.elements.kind.value + ': ' + f.elements.title.value,
-            'Steps / proposal: ' + f.elements.steps.value,
-            'Expected: ' + f.elements.expected.value,
-            'Actual / benefit: ' + f.elements.actual.value,
-            'Browser: ' + navigator.userAgent,
-          ].join('\n\n'),
-        });
-        d.close();
-        await load();
-      } catch (error) {
-        d.querySelector('[role=status]').textContent = error.message;
-      } finally {
-        b.disabled = false;
-      }
-    };
   }
   async function changeMessage(message, operation, extra = {}) {
     try {
@@ -450,12 +487,20 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     const target = { ...selected };
     retryId = retryId || crypto.randomUUID();
     try {
-      await callServer('chatSend', {
-        [target.kind === 'space' ? 'space_id' : 'peer']: target.id,
-        body,
-        message_id: retryId,
-        reply_to: replyTo?.id || null,
-      });
+      if (editing) {
+        await callServer('chatMessage', {
+          [target.kind === 'space' ? 'space_id' : 'peer']: target.id,
+          message_id: editing.id,
+          operation: 'edit',
+          body,
+        });
+      } else
+        await callServer('chatSend', {
+          [target.kind === 'space' ? 'space_id' : 'peer']: target.id,
+          body,
+          message_id: retryId,
+          reply_to: replyTo?.id || null,
+        });
       retryId = null;
       reply(null);
       drafts.delete(draftKey(target));

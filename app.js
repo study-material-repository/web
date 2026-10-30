@@ -108,6 +108,7 @@
           'submitCatalogueContribution',
           'reviewContribution',
           'setCommunityYear',
+          'taskClaim',
           'fundCommunityTask',
           'voteCommunityTask',
           'activateImportedTask',
@@ -327,6 +328,7 @@
         },
       ],
       externalResources: ['external_resources', { ...args[0], session_token: state.token }],
+      taskClaim: ['task_claim', { ...args[0], session_token: state.token }],
       websiteData: ['website_data', { ...args[0], session_token: state.token }],
       chatMessage: ['chat_message', { ...args[0], session_token: state.token }],
       chatHub: ['chat_hub', { ...args[0], session_token: state.token }],
@@ -1206,10 +1208,15 @@
         caption.className = 'classroom-card-caption';
         caption.textContent =
           trail.length === 0
-            ? 'Explore semesters →'
+            ? 'Explore semesters'
             : trail.length === 1
-              ? 'Explore units →'
-              : 'View materials →';
+              ? 'Explore units'
+              : 'View materials';
+        const arrow = document.createElement('span');
+        arrow.className = 'material-symbols-outlined';
+        arrow.textContent = 'arrow_forward';
+        arrow.setAttribute('aria-hidden', 'true');
+        caption.append(arrow);
         card.append(caption);
         grid.append(card);
       });
@@ -1977,6 +1984,28 @@
           if (!task.source_label || task.status !== 'completed' || task.reward_coins > 0)
             contents.append(reward);
           if (task.status === 'open') {
+            const claimStatus = document.createElement('p');
+            claimStatus.className = 'dialog-copy';
+            claimStatus.textContent = task.claim
+              ? (task.claim.mine ? 'Claimed by you' : 'Claimed by another contributor') +
+                (task.claim.submitted
+                  ? ' · In review'
+                  : ' · until ' + new Date(task.claim.expires).toLocaleDateString())
+              : 'Available to claim';
+            contents.append(claimStatus);
+            const claimAction = async (operation) => {
+              try {
+                await callServer('taskClaim', { task_id: task.id, operation });
+                await loadCommunityTasks();
+              } catch (error) {
+                showToast(error.message);
+              }
+            };
+            if (!task.claim)
+              contents.append(actionButton('Claim task', () => claimAction('claim')));
+            else if ((task.claim.mine && !task.claim.submitted) || state.member?.is_admin)
+              contents.append(actionButton('Release claim', () => claimAction('release')));
+
             contents.append(actionButton('Add to reward', () => openFunding(task)));
             if (task.my_funding_coins > 0) {
               const requestId = crypto.randomUUID();
@@ -1988,13 +2017,14 @@
                 }),
               );
             }
-            contents.append(
-              actionButton('Submit work', () => {
-                state.contributionTaskId = task.id;
-                if (task.target_drive_item_id) openContribution(task.target_drive_item_id);
-                else chooseFolder((id) => openContribution(id));
-              }),
-            );
+            if (task.claim?.mine)
+              contents.append(
+                actionButton('Submit work', () => {
+                  state.contributionTaskId = task.id;
+                  if (task.target_drive_item_id) openContribution(task.target_drive_item_id);
+                  else chooseFolder((id) => openContribution(id));
+                }),
+              );
           }
         }
         list.append(card);

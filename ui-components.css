@@ -226,20 +226,6 @@ select.ui-native-select {
   gap: 8px;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .task-row::details-content {
-    transition:
-      content-visibility 0.2s allow-discrete,
-      opacity 0.2s;
-  }
-  .task-row:not([open])::details-content {
-    opacity: 0;
-  }
-  .task-row[open]::details-content {
-    opacity: 1;
-  }
-  .task-row[open] .task-row-details {
-    animation: smr-reveal 0.18s ease-out;
-  }
   dialog[open] {
     animation: smr-reveal 0.16s ease-out;
   }
@@ -261,4 +247,32 @@ select.ui-native-select {
   .top-bar {
     gap: 10px;
   }
+}
+
+/* A single animation owner: motion.js animates details height. */
+details::details-content {
+  transition: none;
+}
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+summary:not(.task-row summary)::before {
+  content: 'chevron_right';
+  font: 24px/1 'Material Symbols Outlined';
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+  transition: transform 0.2s;
+}
+details[open] > summary:not(.task-row summary)::before {
+  transform: rotate(90deg);
+}
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
