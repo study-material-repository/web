@@ -2888,17 +2888,29 @@ backToTop.onclick = () => {
     behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
   });
 };
-const catalogueTop = document.querySelector('.catalogue-card-heading');
-let catalogueTopPassed = false;
+
+let topUpdatePending = false;
 function updateBackToTop() {
-  backToTop.hidden = document.querySelector('#top').hidden || !catalogueTopPassed;
+  const navigation = document.querySelector('.catalogue-sticky-navigation');
+  backToTop.hidden =
+    document.querySelector('#top').hidden ||
+    !navigation ||
+    navigation.getBoundingClientRect().bottom >= 0;
 }
-new IntersectionObserver((entries) => {
-  const entry = entries[0];
-  catalogueTopPassed = !entry.isIntersecting && entry.boundingClientRect.bottom < 0;
-  updateBackToTop();
-}).observe(catalogueTop);
-new MutationObserver(updateBackToTop).observe(document.querySelector('#top'), {
+function scheduleTopUpdate() {
+  if (topUpdatePending) return;
+  topUpdatePending = true;
+  requestAnimationFrame(() => {
+    topUpdatePending = false;
+    updateBackToTop();
+  });
+}
+window.addEventListener('scroll', scheduleTopUpdate, { passive: true });
+window.addEventListener('resize', scheduleTopUpdate);
+new MutationObserver(scheduleTopUpdate).observe(document.querySelector('#top'), {
   attributes: true,
   attributeFilter: ['hidden'],
+  childList: true,
+  subtree: true,
 });
+scheduleTopUpdate();

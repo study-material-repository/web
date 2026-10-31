@@ -1,0 +1,385 @@
+/* M3 shape/type roles; palette, layout spacing and interaction durations are SMR design choices. */
+html[data-theme='mono'] {
+  --md-sys-color-primary: #4056a0;
+  --md-sys-color-on-primary: #fff;
+  --md-sys-color-primary-container: #dce3ff;
+  --md-sys-color-on-primary-container: #203575;
+  --md-sys-color-secondary-container: #e2e7f3;
+  --md-sys-color-on-secondary-container: #35415b;
+  --md-sys-color-surface: #f8f9ff;
+  --md-sys-color-surface-container-lowest: #fff;
+  --md-sys-color-surface-container-low: #f0f3fc;
+  --md-sys-color-surface-container: #e9eef9;
+  --md-sys-color-surface-container-high: #e3e9f6;
+  --md-sys-color-surface-container-highest: #dce3f1;
+  --md-sys-color-on-surface: #202a42;
+  --md-sys-color-on-surface-variant: #53617b;
+  --md-sys-color-outline: #76839d;
+}
+html[data-theme='mono'] body {
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+}
+body {
+  line-height: 1.5;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+  letter-spacing: -0.025em;
+}
+.workspace-heading {
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.workspace-heading h1 {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+  margin: 0;
+}
+.workspace-heading p {
+  max-width: 60ch;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.workspace-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+html[data-theme='mono'] :is(.tonal-button, .ui-select-trigger) {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: none;
+}
+:is(.tonal-button, .text-button) {
+  min-height: 40px;
+  padding: 10px 20px;
+  font:
+    500 14px/20px 'Google Sans',
+    sans-serif;
+  border-radius: 999px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+:is(.tonal-button, .text-button, .icon-button, .classroom-card, .resource-card, .chat-list-item) {
+  transition:
+    background-color 0.16s ease,
+    border-radius 0.16s ease,
+    box-shadow 0.16s ease;
+}
+:is(.tonal-button, .icon-button):hover {
+  box-shadow: inset 0 0 0 100px #4056a00c;
+}
+:is(button, a, input, textarea, select):focus-visible {
+  outline: 3px solid #4056a0;
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+html[data-theme='mono']
+  :is(
+    #contribute-button,
+    #new-dm,
+    #message-compose > button,
+    #send-coins-form > button,
+    .account-dialog button[type='submit']
+  ) {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+.icon-button {
+  flex-shrink: 0;
+  min-width: 40px;
+  min-height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+}
+.icon-button .material-symbols-outlined {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  overflow: visible;
+}
+html[data-theme='mono']
+  :is(.catalogue-card, .contribution-section, .account-insights, .admin-tools, .request-history) {
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: 32px;
+  border: 0;
+  box-shadow: none;
+}
+.catalogue-card,
+.contribution-section {
+  padding: 24px;
+}
+#top .catalogue-extras details {
+  border-radius: 28px;
+  padding: 20px 24px;
+  background: var(--md-sys-color-surface-container-low);
+}
+#top .catalogue-extras summary {
+  cursor: pointer;
+  min-height: 40px;
+  align-content: center;
+}
+#top .resource-cards {
+  gap: 16px;
+}
+#top :is(.resource-card, .classroom-card) {
+  border-radius: 20px;
+}
+#top .resource-card {
+  padding: 20px;
+  gap: 12px;
+  text-decoration: none;
+  min-height: 160px;
+}
+#top .resource-card:hover {
+  box-shadow: 0 4px 12px #27365a20;
+}
+#top .resource-title {
+  font-size: 16px;
+  line-height: 24px;
+}
+#top .resource-metadata {
+  font-size: 12px;
+  line-height: 18px;
+}
+.catalogue-sticky-navigation {
+  background: transparent;
+  padding: 8px 0 16px;
+}
+.catalogue-location {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+html[data-theme='mono'] .catalogue-crumb {
+  color: var(--md-sys-color-primary);
+}
+html[data-theme='mono'] :is(.task-row, .review-card) {
+  background: #fff;
+  border-radius: 20px;
+  padding: 20px;
+  border: 1px solid #e1e6f1;
+  box-shadow: none;
+}
+.task-tabs {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.task-tabs button {
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 8px 20px;
+}
+html[data-theme='mono'] .task-tabs button[aria-pressed='true'] {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-weight: 700;
+}
+#activity .account-overview {
+  gap: 16px;
+  align-items: stretch;
+}
+#activity .account-overview > * {
+  border-radius: 28px;
+  padding: 24px;
+  background: var(--md-sys-color-surface-container-low);
+}
+#activity .stats-grid {
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+}
+#activity .stats-grid > div {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  min-width: 0;
+}
+#activity .stats-grid dd {
+  font-size: 28px;
+  line-height: 36px;
+  margin: 8px 0 0;
+}
+#activity .avatar-settings {
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.task-form label {
+  font-size: 14px;
+  line-height: 20px;
+  display: grid;
+  gap: 8px;
+}
+.task-form :is(input:not([type='checkbox']), textarea, select),
+#message-body {
+  font:
+    400 16px/24px 'Google Sans',
+    sans-serif;
+  border: 1px solid #b6c0d5;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--md-sys-color-on-surface);
+  min-height: 48px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.task-form textarea {
+  min-height: 112px;
+}
+#contribute #year-form {
+  max-width: 100%;
+  gap: 8px;
+}
+html[data-theme='mono'] .ui-select-trigger {
+  border: 1px solid #b6c0d5;
+  border-radius: 12px;
+  min-height: 48px;
+  background: #fff;
+}
+html[data-theme='mono']
+  :is(.ui-select-options, .account-dialog, .repository-dashboard, .emoji-dialog, .avatar-preview) {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+dialog {
+  border: 0;
+  border-radius: 28px;
+  box-shadow: 0 16px 48px #202a4233;
+  max-width: calc(100vw - 32px);
+}
+dialog::backdrop {
+  background: #202a4266;
+}
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.dialog-header h2 {
+  font-size: 24px;
+  line-height: 32px;
+  margin: 0;
+}
+html[data-theme='mono'] #chat .chat-layout {
+  background: transparent;
+  gap: 16px;
+}
+html[data-theme='mono'] #chat .chat-layout aside {
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: 28px;
+  padding: 16px;
+}
+html[data-theme='mono'] #chat .chat-thread {
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: 28px;
+  border: 1px solid #e1e6f1;
+}
+#chat #thread-header {
+  background: transparent;
+  min-height: 72px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #dce3f1;
+}
+#chat .chat-list-item {
+  border-radius: 16px;
+  padding: 12px;
+  gap: 12px;
+  min-height: 56px;
+  margin-bottom: 4px;
+}
+html[data-theme='mono'] #chat .chat-list-item[aria-current='true'] {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-weight: 700;
+}
+#chat .chat-list-item:hover {
+  background: #e3e9f6;
+}
+#chat .chat-bubble {
+  padding: 12px 16px;
+  border-radius: 20px;
+  box-shadow: none;
+}
+#chat .chat-bubble.mine {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+#chat .chat-bubble p {
+  margin: 0 0 4px;
+}
+#chat #message-compose {
+  padding: 16px;
+  background: transparent;
+  align-items: end;
+}
+#chat #message-body {
+  border-radius: 24px;
+  max-height: 160px;
+}
+#chat .chat-reply-preview {
+  margin: 8px 16px;
+  background: #e3e9f6;
+}
+#chat .chat-bubble .chat-reply-preview {
+  margin: 0 0 8px;
+}
+#chat #message-compose > button {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+}
+@media (max-width: 700px) {
+  .workspace-heading {
+    gap: 16px;
+  }
+  .workspace-heading h1 {
+    font-size: 28px;
+    line-height: 36px;
+  }
+  .workspace-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .catalogue-card,
+  .contribution-section {
+    padding: 16px;
+    border-radius: 28px;
+  }
+  #top .catalogue-extras details {
+    padding: 16px;
+  }
+  #activity .account-overview {
+    grid-template-columns: 1fr;
+  }
+  #chat #thread-header {
+    padding: 12px;
+  }
+  #chat #message-compose {
+    padding: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
