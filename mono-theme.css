@@ -1017,3 +1017,105 @@ button.is-loading::before {
     transition: none;
   }
 }
+
+/* Focused usability refinements. */
+html {
+  scrollbar-color: #9da7bc transparent;
+  scrollbar-width: thin;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #9da7bc transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #9da7bc;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+#chat .chat-layout {
+  background: transparent;
+  gap: 12px;
+}
+#chat .chat-layout aside {
+  border-radius: 24px;
+}
+#chat .chat-thread {
+  padding: 0;
+  border-radius: 24px;
+}
+#chat .space-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  background: #dbe2fa;
+  color: #30449a;
+  overflow: visible;
+}
+#chat .space-avatar .material-symbols-outlined {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  line-height: 1;
+  flex: none;
+  overflow: visible;
+}
+#chat .chat-list-item {
+  gap: 12px;
+}
+.catalogue-sticky-navigation {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--md-sys-color-surface-container-low, #eef1fa);
+  padding: 12px 0;
+  border-radius: 0 0 20px 20px;
+}
+.catalogue-sticky-navigation .catalogue-section-title {
+  margin-bottom: 8px;
+}
+#top .resource-metadata {
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+  opacity: 0.9;
+  margin-top: auto;
+}
+#top .resource-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.avatar-preview {
+  resize: both;
+  overflow: auto;
+  width: min(360px, 90vw);
+  height: 400px;
+  min-width: 180px;
+  min-height: 220px;
+  max-width: 95vw;
+  max-height: 90dvh;
+  box-sizing: border-box;
+}
+@media (forced-colors: active) {
+  * {
+    scrollbar-color: auto;
+  }
+}

@@ -1163,7 +1163,11 @@
     const heading = document.createElement('h2');
     heading.className = 'catalogue-section-title';
     heading.textContent = current ? current.name : 'Years';
-    tree.append(heading);
+    const stickyNavigation = document.createElement('div');
+    stickyNavigation.className = 'catalogue-sticky-navigation';
+    if (current) stickyNavigation.append(navigation);
+    stickyNavigation.append(heading);
+    tree.append(stickyNavigation);
     if (inUnit) {
       const expand = (nodes) =>
         nodes.forEach((node) => {

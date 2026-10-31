@@ -477,7 +477,8 @@ window.smrAvatar = function (seed) {
       close = document.createElement('button');
     copy.removeAttribute('tabindex');
     copy.setAttribute('role', 'img');
-    copy.style.cssText = 'width:min(60vw,300px);height:auto;display:block';
+    copy.style.cssText =
+      'width:100%;height:calc(100% - 48px);min-height:100px;display:block;object-fit:contain';
     close.className = 'icon-button';
     close.setAttribute('aria-label', 'Close');
     close.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">close</span>';
@@ -712,14 +713,36 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
                 ? 'video_library'
                 : 'description';
         const name = document.createElement('span');
-        name.textContent = node.name;
+        const parts = node.name
+          .replace(/\.[a-z0-9]+$/i, '')
+          .split('_')
+          .filter(Boolean);
+        a.title = node.name;
+        a.setAttribute('aria-label', node.name);
+        name.textContent = parts.length >= 3 ? parts.slice(2, -1).join(' ') || parts[2] : node.name;
+        if (parts.length >= 3) {
+          const metadata = document.createElement('span');
+          metadata.className = 'resource-metadata';
+          const date = parts[0].match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})$/);
+          metadata.textContent = [
+            parts[1],
+            parts.length > 3 ? parts.at(-1) : '',
+            date
+              ? date[3].padStart(2, '0') + '/' + date[2].padStart(2, '0') + '/' + date[1]
+              : parts[0],
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          name.after(metadata);
+          a.append(metadata);
+        }
         name.className = 'resource-title';
         if (icon.textContent === 'picture_as_pdf') {
           icon.className = 'pdf-symbol';
           icon.innerHTML =
             '<svg aria-hidden="true" viewBox="0 0 32 32" width="32" height="32"><path d="M6 2h13l7 7v21H6z M19 2v8h7" fill="none" stroke="currentColor" stroke-width="2"/><text x="16" y="23" text-anchor="middle" fill="currentColor" font-size="9" font-family="sans-serif" font-weight="700">PDF</text></svg>';
         }
-        a.append(icon, name);
+        a.prepend(icon, name);
         a.onclick = (e) => {
           if (node.kind !== 'folder') {
             e.preventDefault();

@@ -93,12 +93,15 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
   }
   const draftKey = (value) => (value ? value.kind + ':' + value.id : '');
   function spaceIcon(label) {
+    const avatar = document.createElement('span');
+    avatar.className = 'pixel-avatar space-avatar';
     const icon = document.createElement('span');
-    icon.className = 'material-symbols-outlined space-icon';
+    icon.className = 'material-symbols-outlined';
     icon.setAttribute('aria-hidden', 'true');
     icon.textContent =
       { Announcements: 'campaign', 'SMR Central': 'forum', Tasks: 'assignment' }[label] || 'groups';
-    return icon;
+    avatar.append(icon);
+    return avatar;
   }
   function button(label, handler) {
     const b = document.createElement('button');
