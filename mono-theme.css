@@ -1119,3 +1119,29 @@ html {
     scrollbar-color: auto;
   }
 }
+.catalogue-sticky-navigation {
+  position: static;
+}
+.back-to-top:not([hidden]) {
+  position: fixed;
+  right: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #dbe2fa;
+  color: #30449a;
+  box-shadow: 0 3px 10px #18203c25;
+}
+.back-to-top[hidden] {
+  display: none;
+}
+@media (max-width: 700px) {
+  .back-to-top:not([hidden]) {
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    right: 16px;
+  }
+}

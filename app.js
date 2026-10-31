@@ -2874,3 +2874,31 @@ preset.onchange = selectAmount;
 document
   .querySelector('#send-coins-form')
   .addEventListener('reset', () => queueMicrotask(selectAmount));
+const backToTop = document.createElement('button');
+backToTop.className = 'icon-button back-to-top';
+backToTop.hidden = true;
+backToTop.title = 'Back to top';
+backToTop.setAttribute('aria-label', 'Back to top');
+backToTop.innerHTML =
+  '<span class="material-symbols-outlined" aria-hidden="true">arrow_upward</span>';
+document.body.append(backToTop);
+backToTop.onclick = () => {
+  window.scrollTo({
+    top: 0,
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+  });
+};
+const catalogueTop = document.querySelector('.catalogue-card-heading');
+let catalogueTopPassed = false;
+function updateBackToTop() {
+  backToTop.hidden = document.querySelector('#top').hidden || !catalogueTopPassed;
+}
+new IntersectionObserver((entries) => {
+  const entry = entries[0];
+  catalogueTopPassed = !entry.isIntersecting && entry.boundingClientRect.bottom < 0;
+  updateBackToTop();
+}).observe(catalogueTop);
+new MutationObserver(updateBackToTop).observe(document.querySelector('#top'), {
+  attributes: true,
+  attributeFilter: ['hidden'],
+});
