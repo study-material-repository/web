@@ -14,8 +14,8 @@
     />
     <link rel="stylesheet" href="./styles.css?v=20261025" />
     <link rel="stylesheet" href="./community-layout.css?v=20261025b" />
-    <link rel="stylesheet" href="./ui-components.css?v=20261030-expressive" />
-    <link rel="stylesheet" href="./mono-theme.css?v=20261030-expressive" />
+    <link rel="stylesheet" href="./ui-components.css?v=20261030-gallery" />
+    <link rel="stylesheet" href="./mono-theme.css?v=20261030-gallery" />
     <style>
       #catalogue-mode {
         justify-content: flex-start;
@@ -171,6 +171,7 @@
         }
       }
     </style>
+    <link rel="license" href="./artwork-credits.txt" title="Artwork credits" />
   </head>
   <body>
     <nav class="app-navigation" aria-label="Main navigation">
@@ -247,19 +248,20 @@
               <span class="material-symbols-outlined" aria-hidden="true">assignment_add</span
               >Propose task
             </button>
+            <form id="year-form" class="task-form">
+              <label
+                >Your academic year<select id="review-year" required>
+                  <option value="">Choose your year</option>
+                  <option value="1">Year 1</option>
+                  <option value="2">Year 2</option>
+                  <option value="3">Year 3</option>
+                  <option value="4">Year 4</option>
+                </select></label
+              ><button class="tonal-button" type="submit">Save year</button>
+            </form>
           </div>
         </div>
-        <form id="year-form" class="task-form">
-          <label
-            >Your academic year<select id="review-year" required>
-              <option value="">Choose your year</option>
-              <option value="1">Year 1</option>
-              <option value="2">Year 2</option>
-              <option value="3">Year 3</option>
-              <option value="4">Year 4</option>
-            </select></label
-          ><button class="tonal-button" type="submit">Save year</button>
-        </form>
+
         <p id="review-status" role="status" aria-live="polite"></p>
         <div class="contribution-columns">
           <section class="contribution-section">
@@ -360,13 +362,25 @@
           <h2>Send coins</h2>
           <form id="send-coins-form" class="task-form">
             <label
-              >Friend’s email address<input
+              >Friend’s school email address<input
                 id="coin-recipient"
+                type="email"
+                pattern="[^@ ]+@students\.uonbi\.ac\.ke"
+                placeholder="name@students.uonbi.ac.ke"
                 autocomplete="off"
                 required /></label
             ><label
-              >Coins<input
+              >Coins<select id="coin-preset">
+                <option>1</option>
+                <option>2</option>
+                <option>5</option>
+                <option>10</option>
+                <option value="custom">Custom</option>
+              </select></label
+            ><label id="custom-coins" hidden
+              >Custom amount<input
                 id="coin-amount"
+                value="1"
                 type="number"
                 min="0.001"
                 step="0.001"
@@ -749,12 +763,12 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script src="./config.js?v=20260927-admin"></script>
     <script src="./search.js?v=20261014"></script>
-    <script src="./chat-ui.js?v=20261030-expressive"></script>
-    <script src="./motion.js?v=20261030-expressive"></script>
-    <script src="website-extras.js?v=20261030-expressive"></script>
-    <script src="./app.js?v=20261030-expressive"></script>
+    <script src="./chat-ui.js?v=20261030-gallery"></script>
+    <script src="./motion.js?v=20261030-gallery"></script>
+    <script src="website-extras.js?v=20261030-gallery"></script>
+    <script src="./app.js?v=20261030-gallery"></script>
     <script src="./controls.js?v=20261023b"></script>
-    <script src="./ui-components.js?v=20261030-expressive"></script>
-    <script src="./site-header.js?v=20261030-expressive"></script>
+    <script src="./ui-components.js?v=20261030-gallery"></script>
+    <script src="./site-header.js?v=20261030-gallery"></script>
   </body>
 </html>

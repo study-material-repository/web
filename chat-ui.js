@@ -92,6 +92,14 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     }
   }
   const draftKey = (value) => (value ? value.kind + ':' + value.id : '');
+  function spaceIcon(label) {
+    const icon = document.createElement('span');
+    icon.className = 'material-symbols-outlined space-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent =
+      { Announcements: 'campaign', 'SMR Central': 'forum', Tasks: 'assignment' }[label] || 'groups';
+    return icon;
+  }
   function button(label, handler) {
     const b = document.createElement('button');
     b.type = 'button';
@@ -225,6 +233,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
         const b = button(item.label + (item.unread ? ' · ' + item.unread : ''), () =>
           select({ kind, id: item.id }),
         );
+        if (kind === 'space') b.prepend(spaceIcon(item.label));
         if (kind === 'dm' && window.smrAvatar) b.prepend(smrAvatar(item.avatar_seed || item.label));
         if (selected?.id === item.id) b.setAttribute('aria-current', 'true');
         list.append(b);
@@ -251,6 +260,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     header.replaceChildren();
     const title = document.createElement('h2');
     title.textContent = data.thread.label;
+    if (data.thread.kind === 'space') header.prepend(spaceIcon(data.thread.label));
     header.append(title);
     if (data.thread.kind === 'dm' && window.smrAvatar)
       header.prepend(smrAvatar(data.thread.avatar_seed || data.thread.label));
@@ -308,12 +318,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       feed.replaceChildren();
       let previousDay = '';
       data.messages.forEach((message) => {
-        const day = new Date(message.created_at).toLocaleDateString([], {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        });
+        const day = new Date(message.created_at).toLocaleDateString('en-GB');
         if (day !== previousDay) {
           const separator = document.createElement('div');
           separator.className = 'chat-date';
@@ -328,6 +333,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
           feed.append(unread);
         }
         const row = document.createElement('article');
+        row.tabIndex = 0;
         row.className = 'chat-bubble ' + (message.mine ? 'mine' : '');
         row.tabIndex = 0;
         const sender = document.createElement('strong');
@@ -343,7 +349,22 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
               link.rel = 'noopener noreferrer';
               link.textContent = part;
               body.append(link);
-            } else body.append(document.createTextNode(part));
+            } else {
+              for (const token of part.split(
+                /(\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|`[^`]+`|\*[^*\n]+\*|_[^_\n]+_)/g,
+              )) {
+                const marker = token.match(/^(\*\*|__|~~|`|\*|_)/)?.[0];
+                if (marker && token.length > 2 * marker.length && token.endsWith(marker)) {
+                  const el = document.createElement(
+                    { '**': 'strong', __: 'strong', '~~': 's', '`': 'code', '*': 'em', _: 'em' }[
+                      marker
+                    ],
+                  );
+                  el.textContent = token.slice(marker.length, -marker.length);
+                  body.append(el);
+                } else body.append(document.createTextNode(token));
+              }
+            }
           });
         const meta = document.createElement('small');
         meta.textContent = new Date(message.created_at).toLocaleTimeString([], {
@@ -457,7 +478,19 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
           if (message.can_delete)
             actions.append(
               iconButton('delete', 'Delete', () => {
-                if (confirm('Delete this message?')) changeMessage(message, 'delete');
+                const d = document.createElement('dialog');
+                d.className = 'account-dialog delete-dialog';
+                d.setAttribute('aria-labelledby', 'delete-title');
+                d.innerHTML =
+                  '<h2 id="delete-title">Delete message?</h2><p>This removes the message for everyone in this conversation.</p><div class="portrait-actions"><button class="text-button">Cancel</button><button class="tonal-button">Delete</button></div>';
+                document.body.append(d);
+                d.onclose = () => d.remove();
+                d.querySelector('button').onclick = () => d.close();
+                d.querySelector('.tonal-button').onclick = () => {
+                  d.close();
+                  changeMessage(message, 'delete');
+                };
+                d.showModal();
               }),
             );
         }

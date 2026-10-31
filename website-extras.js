@@ -666,7 +666,11 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
       table.append(head);
       for (const user of data.admin.users || []) {
         const tr = document.createElement('tr');
-        for (const text of [user.email, new Date(user.last_seen).toLocaleString(), user.visits]) {
+        for (const text of [
+          user.email,
+          new Date(user.last_seen).toLocaleString('en-GB'),
+          user.visits,
+        ]) {
           const td = document.createElement('td');
           td.textContent = text;
           tr.append(td);
@@ -709,6 +713,12 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
                 : 'description';
         const name = document.createElement('span');
         name.textContent = node.name;
+        name.className = 'resource-title';
+        if (icon.textContent === 'picture_as_pdf') {
+          icon.className = 'pdf-symbol';
+          icon.innerHTML =
+            '<svg aria-hidden="true" viewBox="0 0 32 32" width="32" height="32"><path d="M6 2h13l7 7v21H6z M19 2v8h7" fill="none" stroke="currentColor" stroke-width="2"/><text x="16" y="23" text-anchor="middle" fill="currentColor" font-size="9" font-family="sans-serif" font-weight="700">PDF</text></svg>';
+        }
         a.append(icon, name);
         a.onclick = (e) => {
           if (node.kind !== 'folder') {
@@ -739,7 +749,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
     const modal = document.createElement('dialog');
     modal.className = 'account-dialog';
     modal.innerHTML =
-      '<div class="dialog-scroll"><div class="dialog-header"><h2>Edit avatar</h2><button class="icon-button" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><div class="avatar-palette" aria-label="Colours"></div><div class="avatar-editor-grid" aria-label="Pixel canvas"></div><button class="tonal-button" type="button" data-random>Random portrait</button><button class="text-button" type="button" data-clear>Clear</button><button class="tonal-button" type="button" data-save>Save avatar</button><div class="save-track" role="progressbar" aria-label="Saving avatar" hidden></div><p role="status"></p><small>Additional pixel art adapted from <a href="https://github.com/twitter/twemoji">Twemoji</a> by Twitter and contributors, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small></div>';
+      '<div class="dialog-scroll"><div class="dialog-header"><h2>Edit avatar</h2><button class="icon-button" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div><div class="avatar-palette" aria-label="Colours"></div><div class="avatar-editor-grid" aria-label="Pixel canvas"></div><div class="portrait-gallery" aria-label="Portrait choices"></div><div class="portrait-actions"><button class="tonal-button" type="button" data-random>Shuffle portraits</button><button class="text-button" type="button" data-clear>Clear</button><button class="tonal-button" type="button" data-save>Save avatar</button></div><div class="save-track" role="progressbar" aria-label="Saving avatar" hidden></div><p role="status"></p></div>';
     document.body.append(modal);
     modal.querySelector('[aria-label=Close]').onclick = () => modal.close();
     modal.onclose = () => modal.remove();
@@ -788,12 +798,31 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
       };
       grid.append(b);
     });
-    modal.querySelector('[data-random]').onclick = () => {
-      pixels = [
-        ...portraitPresets[crypto.getRandomValues(new Uint32Array(1))[0] % portraitPresets.length],
-      ];
-      pixels.forEach((v, i) => (grid.children[i].style.background = palette[parseInt(v, 32)]));
-    };
+    modal.classList.add('portrait-editor');
+    const gallery = modal.querySelector('.portrait-gallery');
+    function shuffle() {
+      gallery.replaceChildren();
+      const pool = [...new Set(portraitPresets)];
+      for (let i = 0; i < 12 && pool.length; i++) {
+        const [seed] = pool.splice(crypto.getRandomValues(new Uint32Array(1))[0] % pool.length, 1);
+        const choice = document.createElement('button');
+        choice.type = 'button';
+        choice.setAttribute('aria-label', 'Choose portrait ' + (i + 1));
+        const picture = smrAvatar('pixels-' + seed).cloneNode(true);
+        picture.removeAttribute('tabindex');
+        picture.setAttribute('aria-hidden', 'true');
+        choice.append(picture);
+        choice.onclick = () => {
+          pixels = [...seed];
+          pixels.forEach((v, i) => (grid.children[i].style.background = palette[parseInt(v, 32)]));
+          for (const other of gallery.children)
+            other.setAttribute('aria-pressed', String(other === choice));
+        };
+        gallery.append(choice);
+      }
+    }
+    modal.querySelector('[data-random]').onclick = shuffle;
+    shuffle();
     modal.querySelector('[data-clear]').onclick = () => {
       pixels.fill('0');
       for (const b of grid.children) b.style.background = 'transparent';
@@ -853,7 +882,8 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
         h.textContent = item.name;
         p.textContent =
           item.error ||
-          'Last checked: ' + (item.checked ? new Date(item.checked).toLocaleString() : 'Pending');
+          'Last checked: ' +
+            (item.checked ? new Date(item.checked).toLocaleString('en-GB') : 'Pending');
         remove.textContent = 'Remove';
         remove.className = 'text-button';
         remove.onclick = async () => {

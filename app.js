@@ -1120,6 +1120,7 @@
     const selected = all.get(tree.dataset.folder);
     const current = selected?.node;
     const trail = selected ? [...selected.trail, current] : [];
+    document.querySelector('#top').classList.toggle('inside-year', trail.length > 0);
     const navigate = (id) => {
       tree.dataset.folder = String(id || '');
       try {
@@ -1224,7 +1225,7 @@
     }
     updateExpandControl();
     syncStatus.title = state.snapshot.generated_at
-      ? 'Catalogue refreshed ' + new Date(state.snapshot.generated_at).toLocaleString()
+      ? 'Catalogue refreshed ' + new Date(state.snapshot.generated_at).toLocaleString('en-GB')
       : 'Refresh time unavailable for this saved catalogue';
     emptyState.hidden = contents.length !== 0;
     renderSearch();
@@ -1289,7 +1290,7 @@
         : '<span class="status-dot"></span>Synced';
       syncStatus.title = state.snapshot.generated_at
         ? 'Catalogue refreshed ' +
-          new Date(state.snapshot.generated_at).toLocaleString() +
+          new Date(state.snapshot.generated_at).toLocaleString('en-GB') +
           (state.snapshot.stale ? ' (saved copy)' : '')
         : 'Refresh time unavailable';
     } catch (error) {
@@ -1990,7 +1991,7 @@
               ? (task.claim.mine ? 'Claimed by you' : 'Claimed by another contributor') +
                 (task.claim.submitted
                   ? ' · In review'
-                  : ' · until ' + new Date(task.claim.expires).toLocaleDateString())
+                  : ' · until ' + new Date(task.claim.expires).toLocaleDateString('en-GB'))
               : 'Available to claim';
             contents.append(claimStatus);
             const claimAction = async (operation) => {
@@ -2359,7 +2360,7 @@
       if (!data.items.length && data.next_review_at)
         status.textContent =
           'Your next community review becomes available ' +
-          new Date(data.next_review_at).toLocaleDateString() +
+          new Date(data.next_review_at).toLocaleDateString('en-GB') +
           '.';
       if (!data.items.length) list.textContent = 'No matching submissions to review right now.';
       data.items.forEach((item) => {
@@ -2697,7 +2698,7 @@
         } else title.textContent = item.file;
         const detail = document.createElement('p');
         const date = new Date(item.date);
-        const when = Number.isNaN(date.valueOf()) ? '' : date.toLocaleString();
+        const when = Number.isNaN(date.valueOf()) ? '' : date.toLocaleString('en-GB');
         detail.textContent =
           (item.source === 'legacy' ? 'Imported record' : 'Website request') +
           ' · ' +
@@ -2856,3 +2857,16 @@
   showView(location.hash.slice(1));
   window.SMRApp = { callServer, isAdmin: () => !!state.member?.is_admin };
 })();
+
+const preset = document.querySelector('#coin-preset'),
+  amount = document.querySelector('#coin-amount');
+function selectAmount() {
+  const custom = preset.value === 'custom';
+  document.querySelector('#custom-coins').hidden = !custom;
+  amount.value = custom ? '' : preset.value;
+  if (custom) amount.focus();
+}
+preset.onchange = selectAmount;
+document
+  .querySelector('#send-coins-form')
+  .addEventListener('reset', () => queueMicrotask(selectAmount));
