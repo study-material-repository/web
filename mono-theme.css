@@ -980,3 +980,40 @@ button.is-loading::before {
     animation: none !important;
   }
 }
+/* M3 basic dialog geometry from m3-expressive containment reference. */
+.delete-dialog {
+  box-sizing: border-box;
+  width: min(560px, calc(100vw - 32px));
+  min-width: min(280px, calc(100vw - 32px));
+  padding: 24px;
+  border-radius: 28px;
+  border: 0;
+  background: var(--md-sys-color-surface-container-high, #eceef2);
+  color: var(--md-sys-color-on-surface, #1d1b20);
+}
+.delete-dialog h2 {
+  margin: 0 0 16px;
+}
+.delete-dialog .portrait-actions {
+  margin: 24px 0 0;
+  gap: 8px;
+}
+.delete-dialog::backdrop {
+  background: #18203c66;
+}
+/* Project choice: visible focus and a brief shape response for portrait selection. */
+.portrait-gallery button {
+  transition:
+    border-radius 0.15s ease,
+    background-color 0.15s ease;
+}
+.portrait-gallery button:is(:focus-visible, [aria-pressed='true']) {
+  border-radius: 8px;
+  outline: 3px solid #5063a8;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .portrait-gallery button {
+    transition: none;
+  }
+}
