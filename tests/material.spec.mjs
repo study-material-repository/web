@@ -13,8 +13,8 @@ test.beforeEach(async({page})=>{
    community_review_queue:{mine:[],items:[],reviews:[],queue:[],academic_year:2},
    community_profile:{approved_contributions:0,reviews:0,activated_tasks:0,label:'Test member',level:1,points:0,next_level_points:25},
    member_request_history:{items:[],requests:[],history:[]},
-   website_data:{avatar_seed:'test',stats:{},recent:[],additions:[]},
-   chat_hub:{contacts:[],spaces:[],messages:[]}
+   website_data:{admin:{members:8,active_7_days:3,visits:42,messages:12,files:900,folders:40,new_files:5,days:[{day:'30/10/2026',active:3}],users:[{email:'test@students.uonbi.ac.ke',last_seen:'2026-10-30T12:00:00Z',visits:4}]},avatar_seed:'test',stats:{},recent:[],additions:[]},
+   chat_hub:{contacts:[{id:'peer',label:'Alex',avatar_seed:'alex'}],spaces:[{id:'smr-central',label:'SMR Central',community:'SMR'}],thread:{id:'peer',kind:'dm',label:'Alex',can_send:true},messages:[{id:'one',sender:'Alex',body:'Here are the **revision notes**.\nLet me know what you think.',created_at:'2026-10-30T12:00:00Z',mine:false,reactions:[]},{id:'two',sender:'Test member',body:'Thank you! I will review them this evening.',created_at:'2026-10-30T12:01:00Z',mine:true,reactions:[]}]}
   };await route.fulfill({json:{ok:true,data:responses[action]||{}}});
  });
 });
@@ -47,3 +47,15 @@ test('populated tasks can be expanded and searched',async({page})=>{
  await expect(task).toBeHidden();
  await expect(page.locator('.task-row').filter({hasText:'Organise past papers'})).toBeVisible();
 });
+
+for(const name of ['Edit avatar','Repository dashboard']){
+ test(name+' opens and closes accessibly',async({page})=>{
+  await page.goto('http://127.0.0.1:4188');await page.locator('[data-view=activity]').click();
+  await page.getByRole('button',{name,exact:true}).click();
+  const dialog=page.locator('dialog[open]');await expect(dialog).toBeVisible();
+  const results=await new AxeBuilder({page}).analyze();expect(results.violations).toEqual([]);
+  await page.screenshot({path:test.info().outputPath(name+'.png'),fullPage:true});
+  await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
+ });
+}
+

@@ -94,3 +94,5 @@
  .ui-select-trigger.m3e-button::after {content:'expand_more';font:24px/1 'Material Symbols Outlined';position:static;display:block;inset:auto;transform:none;opacity:1}
  .task-search .m3e-text-field__container {border-radius:var(--m3e-sys-shape-corner-full)}
 }
+
+@layer app { #chat .chat-bubble.mine > small {color:var(--m3e-sys-color-on-primary-container)} }
