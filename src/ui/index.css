@@ -62,3 +62,24 @@
     #chat .chat-layout {border-radius:20px}
   }
 }
+
+@layer app {
+ html[data-theme="mono"] {
+  --md-sys-color-primary:var(--m3e-sys-color-primary);
+  --md-sys-color-on-primary:var(--m3e-sys-color-on-primary);
+  --md-sys-color-primary-container:var(--m3e-sys-color-primary-container);
+  --md-sys-color-on-primary-container:var(--m3e-sys-color-on-primary-container);
+  --md-sys-color-secondary-container:var(--m3e-sys-color-secondary-container);
+  --md-sys-color-on-secondary-container:var(--m3e-sys-color-on-secondary-container);
+  --md-sys-color-surface:var(--m3e-sys-color-surface);
+  --md-sys-color-surface-container-lowest:var(--m3e-sys-color-surface-container-lowest);
+  --md-sys-color-surface-container-low:var(--m3e-sys-color-surface-container-low);
+  --md-sys-color-surface-container:var(--m3e-sys-color-surface-container);
+  --md-sys-color-surface-container-high:var(--m3e-sys-color-surface-container-high);
+  --md-sys-color-surface-container-highest:var(--m3e-sys-color-surface-container-highest);
+  --md-sys-color-on-surface:var(--m3e-sys-color-on-surface);
+  --md-sys-color-on-surface-variant:var(--m3e-sys-color-on-surface-variant);
+  --md-sys-color-outline:var(--m3e-sys-color-outline);
+  --md-sys-color-outline-variant:var(--m3e-sys-color-outline-variant);
+ }
+}
