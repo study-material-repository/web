@@ -42,6 +42,21 @@ function enhance(root=document) {
 
   });
 }
+const navigation=document.querySelector('.app-navigation');
+if(navigation){
+ const media=matchMedia('(max-width:600px)');
+ const adapt=()=>{navigation.classList.toggle('m3e-navigation-rail',!media.matches);navigation.classList.toggle('m3e-navigation-bar',media.matches);};
+ adapt();media.addEventListener('change',adapt);
+ navigation.querySelectorAll('button').forEach(button=>{
+  const icon=button.querySelector('.material-symbols-outlined');
+  const label=document.createElement('span');label.className='m3e-navigation-item__label';label.textContent=button.textContent.replace(icon.textContent,'').trim();
+  const content=document.createElement('span');content.className='m3e-navigation-item__content';
+  const indicator=document.createElement('span');indicator.className='m3e-navigation-item__indicator';
+  const state=document.createElement('span');state.className='m3e-navigation-item__state';
+  icon.classList.add('m3e-navigation-item__icon');content.append(indicator,state,icon,label);
+  button.replaceChildren(content);button.classList.add('m3e-navigation-item');
+ });
+}
 enhance();
 new MutationObserver(records=>{
  if(records.some(r=>r.addedNodes.length))enhance();
