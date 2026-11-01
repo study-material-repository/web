@@ -19,7 +19,7 @@ function enhance(root=document) {
   root.querySelectorAll('.classroom-card').forEach(card=>card.removeAttribute('aria-label'));
   document.querySelector('#catalogue-tree')?.removeAttribute('role');
   root.querySelectorAll('.material-symbols-outlined').forEach(icon=>icon.classList.add('m3e-icon'));
-  root.querySelectorAll('.resource-card,.task-row,.review-card,.account-action-card,.balance-summary').forEach(card=>card.classList.add('m3e-card'));
+  root.querySelectorAll('.resource-card,.review-card,.account-action-card,.balance-summary').forEach(card=>card.classList.add('m3e-card'));
   root.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea').forEach(input=>{
     if(input.closest('.m3e-text-field'))return;
     const wrapper=document.createElement('span');

@@ -9,7 +9,7 @@ test.beforeEach(async({page})=>{
    member_catalogue_state:{member,treasury_balance_coins:100,verified_access_ids:[]},
    catalogue_snapshot:{nodes:[],generated_at:new Date().toISOString()},
    site_tips:{tips:[]},
-   community_tasks:{tasks:[]},
+   community_tasks:{tasks:[{id:'fixture-open',title:'Add worked examples for Introduction to Programming',status:'open',target_path:'Year 1 / Semester 1',note:'Explain loops and arrays with clear examples.',reward_coins:5,votes:3},{id:'fixture-unfunded',title:'Organise past papers for Cloud Computing Technology & Applications',status:'open',target_path:'Year 4 / Semester 1',note:'Group papers by year and include marking guides where available.',reward_coins:0,votes:0}]},
    community_review_queue:{mine:[],items:[],reviews:[],queue:[],academic_year:2},
    community_profile:{approved_contributions:0,reviews:0,activated_tasks:0,label:'Test member',level:1,points:0,next_level_points:25},
    member_request_history:{items:[],requests:[],history:[]},
@@ -36,4 +36,14 @@ test('proposal dialog opens and preserves form validation',async({page})=>{
  await page.locator('#propose-task').click();await expect(page.locator('#task-dialog')).toBeVisible();
  await expect(page.locator('#task-name')).toBeEditable();
  await page.keyboard.press('Escape');await expect(page.locator('#task-dialog')).not.toBeVisible();
+});
+
+test('populated tasks can be expanded and searched',async({page})=>{
+ await page.goto('http://127.0.0.1:4188');await page.locator('[data-view=contribute]').click();
+ const task=page.locator('.task-row').filter({hasText:'Add worked examples'});
+ await task.locator('summary').click();
+ await expect(task.locator('.task-description')).toBeVisible();
+ await page.getByPlaceholder('Search tasks').fill('Cloud Computing');
+ await expect(task).toBeHidden();
+ await expect(page.locator('.task-row').filter({hasText:'Organise past papers'})).toBeVisible();
 });
