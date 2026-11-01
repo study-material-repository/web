@@ -487,7 +487,7 @@ window.smrAvatar = function (seed) {
     d.append(close, copy);
     document.body.append(d);
     d.onclose = () => d.remove();
-    d.showModal();
+    window.SMRMaterial.open(d);
   };
   svg.onclick = enlarge;
   svg.onkeydown = (e) => {
@@ -601,7 +601,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
       const launch = document.createElement('button');
       launch.className = 'tonal-button';
       launch.textContent = 'Repository dashboard';
-      launch.onclick = () => admin.showModal();
+      launch.onclick = () => window.SMRMaterial.open(admin);
       launch.dataset.extra = '';
       launch.insertAdjacentHTML(
         'afterbegin',
@@ -868,7 +868,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
         e.target.disabled = false;
       }
     };
-    modal.showModal();
+    window.SMRMaterial.open(modal);
   }
   async function manageResources() {
     const modal = document.createElement('dialog');
@@ -878,7 +878,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
     document.body.append(modal);
     modal.querySelector('[aria-label=Close]').onclick = () => modal.close();
     modal.addEventListener('close', () => modal.remove());
-    modal.showModal();
+    window.SMRMaterial.open(modal);
     const form = modal.querySelector('form'),
       status = modal.querySelector('[role=status]'),
       list = modal.querySelector('.resource-list');

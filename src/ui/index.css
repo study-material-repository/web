@@ -1,0 +1,35 @@
+@layer legacy, reset, m3e, app;
+@import "../../node_modules/@kyralabs/m3exp-web/dist/css/index.css";
+@layer reset {
+ .m3e-button,.m3e-icon-button {all:revert;box-sizing:border-box;cursor:pointer}
+}
+@layer app {
+ [hidden] {display:none!important}
+ body {background:var(--m3e-sys-color-surface);color:var(--m3e-sys-color-on-surface);font-family:var(--m3e-sys-typescale-body-large-font)}
+ .m3e-dialog {max-width:95vw}
+ .m3e-dialog__container {max-height:85dvh;overflow:auto}
+ .m3e-card {padding:var(--m3e-sys-space-400,16px)}
+ .m3e-button:disabled,.m3e-icon-button:disabled {cursor:default}
+ .m3e-icon {flex-shrink:0}
+}
+@layer app {
+ .m3e-text-field {display:block;min-width:0;width:100%}
+ .m3e-text-field__container {min-width:0}
+ .m3e-text-field__input {width:100%;box-sizing:border-box}
+ .task-form>label {display:grid;gap:var(--m3e-sys-space-200,8px)}
+}
+@layer app {
+ :root {--m3e-ref-typeface-icon:"Material Symbols Outlined"}
+ .app-navigation button {display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;border:0;background:transparent;color:var(--m3e-sys-color-on-surface);font:inherit;min-height:64px;width:100%}
+ .app-navigation button[aria-current] {background:var(--m3e-sys-color-secondary-container);border-radius:var(--m3e-sys-shape-corner-full)}
+}
+@layer app {
+ .m3e-icon {overflow:visible;inline-size:24px;block-size:24px;font-size:24px;line-height:24px}
+}
+@layer app {
+ /* Prevent decorative focus/state layers from creating horizontal page scroll. */
+ body {overflow-x:clip}
+}
+@layer app {
+ .header-search-toggle {margin-inline-end:8px}
+}

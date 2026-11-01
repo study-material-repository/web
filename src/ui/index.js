@@ -1,0 +1,49 @@
+import '@kyralabs/m3e-elements/ripple.js';
+import {MenuPopup} from '@kyralabs/m3e-elements/menu-popup.js';
+import {DialogLayout} from '@kyralabs/m3e-elements/dialog-layout.js';
+const dialogs = new WeakMap();
+const primary = '#contribute-button,#new-dm,#message-compose>button,#send-coins-form>button,dialog button[type=submit]';
+function enhance(root=document) {
+  root.querySelectorAll('button').forEach(button=>{
+    if(button.closest('.avatar-editor-grid,.avatar-palette'))return;
+    if(button.matches('[data-view],.m3e-menu__item'))return;
+    if(button.matches('.classroom-card')){button.classList.add('m3e-card','m3e-card--interactive');return;}
+    if(button.matches('.icon-button,.chat-action'))button.classList.add('m3e-icon-button');
+    else {
+      button.classList.add('m3e-button','m3e-button--size-s');
+      button.classList.toggle('m3e-button--filled',button.matches(primary));
+      button.classList.toggle('m3e-button--tonal',!button.matches(primary)&&!button.matches('.text-button'));
+      button.classList.toggle('m3e-button--text',button.matches('.text-button'));
+    }
+  });
+  root.querySelectorAll('.classroom-card').forEach(card=>card.removeAttribute('aria-label'));
+  document.querySelector('#catalogue-tree')?.removeAttribute('role');
+  root.querySelectorAll('.material-symbols-outlined').forEach(icon=>icon.classList.add('m3e-icon'));
+  root.querySelectorAll('.resource-card,.task-row,.review-card,.account-action-card,.balance-summary').forEach(card=>card.classList.add('m3e-card'));
+  root.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea').forEach(input=>{
+    if(input.closest('.m3e-text-field'))return;
+    const wrapper=document.createElement('span');
+    wrapper.className='m3e-text-field';
+    const container=document.createElement('span');container.className='m3e-text-field__container';
+    input.before(wrapper);wrapper.append(container);container.append(input);
+    input.classList.add('m3e-text-field__input');
+  });
+  root.querySelectorAll('dialog').forEach(dialog=>{
+    if(dialogs.has(dialog))return;
+    const container=document.createElement('div');
+    container.className='m3e-dialog__container';
+    container.append(...dialog.childNodes);
+    dialog.append(container);
+    dialog.classList.add('m3e-dialog');
+    const heading=dialog.querySelector('h1,h2');
+    if(heading){heading.classList.add('m3e-dialog__headline');if(!heading.id)heading.id='dialog-'+crypto.randomUUID();dialog.setAttribute('aria-labelledby',heading.id);}
+    else if(!dialog.hasAttribute('aria-label'))dialog.setAttribute('aria-label','Dialog');
+    const layout=new DialogLayout(dialog);dialogs.set(dialog,layout);
+
+  });
+}
+enhance();
+new MutationObserver(records=>{
+ if(records.some(r=>r.addedNodes.length))enhance();
+}).observe(document.body,{childList:true,subtree:true});
+window.SMRMaterial={enhance,MenuPopup,open(dialog){enhance();dialogs.get(dialog).setOpen(true);},close(dialog){dialogs.get(dialog)?.setOpen(false);}};

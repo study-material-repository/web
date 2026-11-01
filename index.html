@@ -12,167 +12,169 @@
       href="https://fonts.googleapis.com/css2?family=Google+Sans:opsz,wght@17..18,400;17..18,500;17..18,700&family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20261025" />
-    <link rel="stylesheet" href="./community-layout.css?v=20261025b" />
-    <link rel="stylesheet" href="./ui-components.css?v=20261031-uniform" />
-    <link rel="stylesheet" href="./mono-theme.css?v=20261031-uniform" />
+
     <style>
-      #catalogue-mode {
-        justify-content: flex-start;
-        margin: 0 0 20px;
-        gap: 8px;
-      }
-      .browse-folder {
-        display: inline-flex;
-        margin: 8px;
-        padding: 24px;
-        min-height: 76px;
-        min-width: min(240px, 90%);
-        text-align: left;
-      }
-      dialog.account-dialog form {
-        display: grid;
-        gap: 16px;
-      }
-      dialog.account-dialog form label {
-        display: grid;
-        gap: 8px;
-      }
-      #fund-presets {
-        flex-wrap: wrap;
-        justify-content: flex-start;
-        gap: 8px;
-      }
-      @media (max-width: 600px) {
+      @layer legacy {
+        #catalogue-mode {
+          justify-content: flex-start;
+          margin: 0 0 20px;
+          gap: 8px;
+        }
         .browse-folder {
-          width: 100%;
-          margin: 6px 0;
-          min-width: 0;
+          display: inline-flex;
+          margin: 8px;
+          padding: 24px;
+          min-height: 76px;
+          min-width: min(240px, 90%);
+          text-align: left;
         }
-      }
-      .catalogue-location {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 20px;
-        font-size: 13px;
-      }
-      .catalogue-back,
-      .catalogue-crumb {
-        border: 0;
-        background: transparent;
-        color: #344b75;
-        font: inherit;
-        cursor: pointer;
-        padding: 10px 6px;
-        border-radius: 10px;
-      }
-      .catalogue-back {
-        margin-right: 12px;
-        background: #e4eaf6;
-        padding: 10px 16px;
-      }
-      .catalogue-crumb[aria-current] {
-        color: #202124;
-        font-weight: 600;
-      }
-      .catalogue-section-title {
-        font-size: 24px;
-        margin: 0 0 24px;
-        line-height: 1.4;
-      }
-      .catalogue-card-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-        gap: 20px;
-      }
-      .classroom-card {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 28px;
-        min-height: 168px;
-        padding: 24px;
-        border: 0;
-        border-radius: 18px;
-        background: var(--card-bg, #dce9ff);
-        color: var(--card-fg, #163c70);
-        font:
-          500 21px/1.4 'Google Sans',
-          sans-serif;
-        text-align: left;
-        cursor: pointer;
-        transition:
-          transform 0.15s,
-          box-shadow 0.15s;
-        overflow-wrap: anywhere;
-      }
-      .classroom-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 14px #25375a18;
-      }
-      .classroom-card:focus-visible {
-        outline: 3px solid #4466bc;
-        outline-offset: 3px;
-      }
-      .classroom-card[data-tone='1'] {
-        --card-bg: #d8eee6;
-        --card-fg: #185344;
-      }
-      .classroom-card[data-tone='2'] {
-        --card-bg: #ece1f6;
-        --card-fg: #583578;
-      }
-      .classroom-card[data-tone='3'] {
-        --card-bg: #ffe6d5;
-        --card-fg: #743c1b;
-      }
-      .classroom-card[data-tone='4'] {
-        --card-bg: #d7edf0;
-        --card-fg: #18515b;
-      }
-      .classroom-card[data-tone='5'] {
-        --card-bg: #f5dfe8;
-        --card-fg: #743650;
-      }
-      .classroom-card-caption {
-        font:
-          400 13px/1.4 'Google Sans',
-          sans-serif;
-      }
-      .unit-content > .tree-node-folder {
-        margin: 12px 0 24px;
-      }
-      .unit-content > .tree-node-folder > .tree-row {
-        border-bottom: 1px solid #d9dfe8;
-        padding-top: 12px;
-        padding-bottom: 12px;
-        color: #325a85;
-        font-size: 18px;
-      }
-      @media (max-width: 600px) {
-        .catalogue-card-grid {
-          grid-template-columns: 1fr;
-          gap: 12px;
+        dialog.account-dialog form {
+          display: grid;
+          gap: 16px;
         }
-        .classroom-card {
-          min-height: 125px;
-          padding: 20px;
-          font-size: 20px;
-          gap: 18px;
+        dialog.account-dialog form label {
+          display: grid;
+          gap: 8px;
         }
-        .catalogue-section-title {
-          font-size: 21px;
+        #fund-presets {
+          flex-wrap: wrap;
+          justify-content: flex-start;
+          gap: 8px;
+        }
+        @media (max-width: 600px) {
+          .browse-folder {
+            width: 100%;
+            margin: 6px 0;
+            min-width: 0;
+          }
         }
         .catalogue-location {
-          gap: 3px;
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 20px;
+          font-size: 13px;
+        }
+        .catalogue-back,
+        .catalogue-crumb {
+          border: 0;
+          background: transparent;
+          color: #344b75;
+          font: inherit;
+          cursor: pointer;
+          padding: 10px 6px;
+          border-radius: 10px;
+        }
+        .catalogue-back {
+          margin-right: 12px;
+          background: #e4eaf6;
+          padding: 10px 16px;
+        }
+        .catalogue-crumb[aria-current] {
+          color: #202124;
+          font-weight: 600;
+        }
+        .catalogue-section-title {
+          font-size: 24px;
+          margin: 0 0 24px;
+          line-height: 1.4;
+        }
+        .catalogue-card-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+          gap: 20px;
+        }
+        .classroom-card {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 28px;
+          min-height: 168px;
+          padding: 24px;
+          border: 0;
+          border-radius: 18px;
+          background: var(--card-bg, #dce9ff);
+          color: var(--card-fg, #163c70);
+          font:
+            500 21px/1.4 'Google Sans',
+            sans-serif;
+          text-align: left;
+          cursor: pointer;
+          transition:
+            transform 0.15s,
+            box-shadow 0.15s;
+          overflow-wrap: anywhere;
+        }
+        .classroom-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 5px 14px #25375a18;
+        }
+        .classroom-card:focus-visible {
+          outline: 3px solid #4466bc;
+          outline-offset: 3px;
+        }
+        .classroom-card[data-tone='1'] {
+          --card-bg: #d8eee6;
+          --card-fg: #185344;
+        }
+        .classroom-card[data-tone='2'] {
+          --card-bg: #ece1f6;
+          --card-fg: #583578;
+        }
+        .classroom-card[data-tone='3'] {
+          --card-bg: #ffe6d5;
+          --card-fg: #743c1b;
+        }
+        .classroom-card[data-tone='4'] {
+          --card-bg: #d7edf0;
+          --card-fg: #18515b;
+        }
+        .classroom-card[data-tone='5'] {
+          --card-bg: #f5dfe8;
+          --card-fg: #743650;
+        }
+        .classroom-card-caption {
+          font:
+            400 13px/1.4 'Google Sans',
+            sans-serif;
+        }
+        .unit-content > .tree-node-folder {
+          margin: 12px 0 24px;
+        }
+        .unit-content > .tree-node-folder > .tree-row {
+          border-bottom: 1px solid #d9dfe8;
+          padding-top: 12px;
+          padding-bottom: 12px;
+          color: #325a85;
+          font-size: 18px;
+        }
+        @media (max-width: 600px) {
+          .catalogue-card-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+          .classroom-card {
+            min-height: 125px;
+            padding: 20px;
+            font-size: 20px;
+            gap: 18px;
+          }
+          .catalogue-section-title {
+            font-size: 21px;
+          }
+          .catalogue-location {
+            gap: 3px;
+          }
         }
       }
     </style>
     <link rel="license" href="./artwork-credits.txt" title="Artwork credits" />
-    <link rel="stylesheet" href="./expressive-ui.css?v=20261031-uniform" />
+
+    <link rel="stylesheet" href="./assets/legacy.css" />
+    <link rel="stylesheet" href="./assets/material.css" />
+    <link rel="stylesheet" href="./assets/theme.css" />
   </head>
   <body>
     <nav class="app-navigation" aria-label="Main navigation">
@@ -764,6 +766,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script src="./config.js?v=20260927-admin"></script>
     <script src="./search.js?v=20261014"></script>
+    <script src="./assets/material.js"></script>
     <script src="./chat-ui.js?v=20261031-uniform"></script>
     <script src="./motion.js?v=20261031-uniform"></script>
     <script src="website-extras.js?v=20261031-uniform"></script>
