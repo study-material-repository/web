@@ -398,7 +398,7 @@
       : 'Request access for the price shown.';
     requestConfirm.textContent = checkingOwnedFile ? 'Check access' : 'Request access';
     setRequestProgress('', false);
-    window.SMRMaterial.open(requestDialog);
+    requestDialog.showModal();
     return new Promise((resolve) => {
       resolvePendingRequest = resolve;
     });
@@ -645,7 +645,7 @@
     if (state.member)
       document.querySelector('#signed-in-email').textContent = state.member.delivery_email;
     showForm('');
-    window.SMRMaterial.open(dialog);
+    dialog.showModal();
   }
   let pathNodes,
     pathIndex = new Map(),
@@ -685,7 +685,7 @@
     state.contributionTargetId = String(target.id);
     contributionTargetPath.textContent = cataloguePathFor(target);
     contributionMessage.textContent = '';
-    window.SMRMaterial.open(contributionDialog);
+    contributionDialog.showModal();
   }
   function buildTree(nodes) {
     const byId = new Map(nodes.map((node) => [String(node.id), { ...node, children: [] }]));
@@ -865,7 +865,7 @@
       if (checkOnly) {
         requestSummary.textContent = node.name;
         requestDetail.textContent = state.member.delivery_email || state.member.school_email;
-        window.SMRMaterial.open(requestDialog);
+        requestDialog.showModal();
       } else if (!(await confirmRequest(node))) return;
       requestInFlight = true;
       setRequestProgress(
@@ -927,7 +927,7 @@
           'Access confirmed for ' + (result.delivery_email || state.member.delivery_email) + '.';
         requestConfirm.textContent = 'Open file';
         requestCancel.textContent = 'Close';
-        window.SMRMaterial.open(requestDialog);
+        requestDialog.showModal();
         const open = await new Promise((resolve) => {
           resolvePendingRequest = resolve;
         });
@@ -1637,7 +1637,7 @@
     document.querySelector('#admin-drive-status').textContent = '';
     adminDriveDialog.dataset.nodeId = node.id;
     adminDriveDialog.dataset.nodeKind = node.kind;
-    window.SMRMaterial.open(adminDriveDialog);
+    adminDriveDialog.showModal();
   });
   document.querySelector('#close-admin-drive').onclick = () => adminDriveDialog.close();
   async function adminDriveRun(action) {
@@ -1715,7 +1715,7 @@
         dialog.remove();
         resolve(accepted);
       };
-      window.SMRMaterial.open(dialog);
+      dialog.showModal();
       cancel.focus();
     });
   }
@@ -2091,7 +2091,7 @@
     document.querySelector('#task-form').reset();
     document.querySelector('#task-status').textContent = '';
     document.querySelector('#task-destination').textContent = 'Community-wide task';
-    window.SMRMaterial.open(taskDialog);
+    taskDialog.showModal();
   });
   document.querySelector('#close-task').addEventListener('click', () => taskDialog.close());
   document.querySelector('#tree-menu-task').addEventListener('click', () => {
@@ -2103,7 +2103,7 @@
     document.querySelector('#task-form').reset();
     document.querySelector('#task-status').textContent = '';
     document.querySelector('#task-destination').textContent = cataloguePathFor(node);
-    window.SMRMaterial.open(taskDialog);
+    taskDialog.showModal();
   });
   document.querySelector('#task-form').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -2264,7 +2264,7 @@
     modal.append(form);
     document.body.append(modal);
     modal.onclose = () => modal.remove();
-    window.SMRMaterial.open(modal);
+    modal.showModal();
   }
   document
     .querySelectorAll('[data-view]')
@@ -2279,7 +2279,7 @@
     pickCallback = callback;
     pickerId = '';
     renderPicker();
-    window.SMRMaterial.open(picker);
+    picker.showModal();
   }
   function renderPicker() {
     let filter = document.querySelector('#picker-search');
@@ -2367,7 +2367,7 @@
       }
       document.querySelector('#fund-amount').insertAdjacentElement('afterend', presets);
     }
-    window.SMRMaterial.open(fundDialog);
+    fundDialog.showModal();
   }
   document.querySelector('#close-fund').onclick = () => fundDialog.close();
   document.querySelector('#fund-form').onsubmit = async (event) => {
@@ -2627,7 +2627,7 @@
     if (!state.token) return openAccount();
     document.querySelector('#coinflip-form').reset();
     document.querySelector('#coinflip-form-status').textContent = '';
-    window.SMRMaterial.open(coinflipDialog);
+    coinflipDialog.showModal();
   };
   document.querySelector('#close-coinflip').onclick = () => coinflipDialog.close();
   document.querySelector('#coinflip-form').onsubmit = async (event) => {
@@ -2666,7 +2666,7 @@
     if (!state.token) return openAccount();
     const content = document.querySelector('#profile-content');
     busy(content);
-    window.SMRMaterial.open(profileDialog);
+    profileDialog.showModal();
     try {
       const profile = await callServer('memberProfileSummary', address);
       content.replaceChildren();

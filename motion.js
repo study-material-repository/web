@@ -4,7 +4,7 @@
   bar.setAttribute('role', 'progressbar');
   bar.setAttribute('aria-label', 'Loading');
   bar.hidden = true;
-  document.querySelector('main').append(bar);
+  document.body.append(bar);
   let pending = 0,
     timer;
   window.SMRProgress = {

@@ -180,7 +180,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       (id) => ($(id).hidden = next !== 'space'),
     );
     $('chat-address-label').hidden = next === 'space';
-    window.SMRMaterial.open(modal);
+    modal.showModal();
   }
   modal.querySelector('.icon-button').onclick = () => modal.close();
   $('new-dm').onclick = () => setup('dm');
@@ -451,7 +451,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
                 )
                   dialog.close();
               };
-              window.SMRMaterial.open(dialog);
+              dialog.showModal();
               const input = dialog.querySelector('input'),
                 results = dialog.querySelector('.emoji-results'),
                 status = dialog.querySelector('[role=status]');
@@ -507,7 +507,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
                   d.close();
                   changeMessage(message, 'delete');
                 };
-                window.SMRMaterial.open(d);
+                d.showModal();
               }),
             );
         }
