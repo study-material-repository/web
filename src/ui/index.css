@@ -33,3 +33,9 @@
 @layer app {
  .header-search-toggle {margin-inline-end:8px}
 }
+@layer app {
+ #contribute .workspace-actions {align-items:end}
+ #contribute #year-form {align-items:end}
+ #contribute #year-form .ui-select-trigger, #contribute .workspace-actions > button, #contribute #year-form > button {min-height:48px;border-radius:999px}
+ #community-list .task-row {border:0;box-shadow:none}
+}
