@@ -383,3 +383,106 @@ html[data-theme='mono'] #chat .chat-list-item[aria-current='true'] {
 [hidden] {
   display: none !important;
 }
+
+/* One global network progress indicator; local text communicates the operation. */
+.loading-wave::after,
+.spinner,
+.request-progress-orb,
+.is-loading::before {
+  display: none !important;
+}
+.loading-wave,
+.request-progress #request-progress-message {
+  animation: none !important;
+  background: none !important;
+  color: var(--md-sys-color-on-surface-variant) !important;
+}
+.is-loading {
+  color: inherit !important;
+}
+#contribute #year-form {
+  display: flex;
+  flex-direction: row;
+  align-items: end;
+  flex-wrap: nowrap;
+}
+#year-form label {
+  min-width: 135px;
+}
+#year-form button {
+  margin: 0;
+  flex: none;
+}
+button,
+.icon-button,
+summary,
+.tonal-button,
+.text-button {
+  user-select: none;
+  -webkit-user-select: none;
+}
+input:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--md-sys-color-primary);
+}
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+#search-tasks:focus,
+.task-tools input:focus,
+input[type='search']:focus {
+  box-shadow: none;
+}
+.portrait-editor {
+  resize: both;
+  overflow: auto;
+  min-width: 320px;
+  min-height: 400px;
+  width: 500px;
+  max-width: 95vw;
+  max-height: 90dvh;
+}
+.portrait-editor .dialog-scroll {
+  max-height: none;
+  overflow: visible;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tonal-button:active,
+  .icon-button:active {
+    transform: scale(0.96);
+  }
+  .resource-card:active,
+  .classroom-card:active {
+    transform: scale(0.98);
+  }
+  dialog[open] {
+    animation: smr-dialog-in 0.18s ease-out;
+  }
+  @keyframes smr-dialog-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  ::view-transition-old(root) {
+    animation-duration: 0.18s;
+  }
+  ::view-transition-new(root) {
+    animation-duration: 0.18s;
+  }
+}
+
+.task-tools input:focus,
+#search-input:focus {
+  outline: 2px solid var(--md-sys-color-primary) !important;
+  outline-offset: 2px;
+  box-shadow: none !important;
+}

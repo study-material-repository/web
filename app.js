@@ -1126,7 +1126,9 @@
       try {
         localStorage.setItem(key, tree.dataset.folder);
       } catch {}
-      renderCatalogue();
+      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches)
+        document.startViewTransition(() => renderCatalogue());
+      else renderCatalogue();
     };
     const navigation = document.createElement('nav');
     navigation.className = 'catalogue-location';
@@ -1684,11 +1686,55 @@
     }
   });
 
+  function confirmSubmission(title, description) {
+    return new Promise((resolve) => {
+      const dialog = document.createElement('dialog');
+      dialog.className = 'account-dialog delete-dialog';
+      const heading = document.createElement('h2');
+      heading.textContent = title;
+      const body = document.createElement('p');
+      body.textContent = description;
+      const actions = document.createElement('div');
+      actions.className = 'portrait-actions';
+      let accepted = false;
+      const cancel = document.createElement('button');
+      cancel.className = 'text-button';
+      cancel.textContent = 'Review';
+      const submit = document.createElement('button');
+      submit.className = 'tonal-button';
+      submit.textContent = 'Confirm submission';
+      cancel.onclick = () => dialog.close();
+      submit.onclick = () => {
+        accepted = true;
+        dialog.close();
+      };
+      actions.append(cancel, submit);
+      dialog.append(heading, body, actions);
+      document.body.append(dialog);
+      dialog.onclose = () => {
+        dialog.remove();
+        resolve(accepted);
+      };
+      dialog.showModal();
+      cancel.focus();
+    });
+  }
   contributionForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const button = contributionForm.querySelector('button[type=submit]');
     if (button.disabled) return;
     button.disabled = true;
+    if (
+      !(await confirmSubmission(
+        'Submit this material?',
+        document.querySelector('#contribution-title-input').value +
+          ' — ' +
+          document.querySelector('#contribution-url').value,
+      ))
+    ) {
+      button.disabled = false;
+      return;
+    }
     button.classList.add('is-loading');
     contributionMessage.textContent = '';
     try {
@@ -2063,7 +2109,19 @@
     event.preventDefault();
     const button = event.target.querySelector('button[type=submit]');
     const status = document.querySelector('#task-status');
+    if (button.disabled) return;
     button.disabled = true;
+    if (
+      !(await confirmSubmission(
+        'Propose this task?',
+        document.querySelector('#task-name').value +
+          ' — ' +
+          document.querySelector('#task-note').value,
+      ))
+    ) {
+      button.disabled = false;
+      return;
+    }
     busy(status);
     try {
       await callServer(

@@ -740,7 +740,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
         if (icon.textContent === 'picture_as_pdf') {
           icon.className = 'pdf-symbol';
           icon.innerHTML =
-            '<svg aria-hidden="true" viewBox="0 0 32 32" width="32" height="32"><path d="M6 2h13l7 7v21H6z M19 2v8h7" fill="none" stroke="currentColor" stroke-width="2"/><text x="16" y="23" text-anchor="middle" fill="currentColor" font-size="9" font-family="sans-serif" font-weight="700">PDF</text></svg>';
+            '<svg aria-hidden="true" viewBox="0 0 32 32" width="32" height="32"><path d="M6 2h13l7 7v21H6z M19 2v8h7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 16h10M11 21h10M11 25h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
         }
         a.prepend(icon, name);
         a.onclick = (e) => {

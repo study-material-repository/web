@@ -1,4 +1,34 @@
 let emojiCatalogue;
+try {
+  const cached = JSON.parse(localStorage.getItem('smr-emoji-v1'));
+  if (
+    Array.isArray(cached) &&
+    cached.every((x) => Array.isArray(x) && x.length === 2 && x.every((y) => typeof y === 'string'))
+  )
+    emojiCatalogue = Promise.resolve(cached);
+} catch {}
+function loadEmojiCatalogue() {
+  return (emojiCatalogue ??= fetch('./reaction-catalogue.json')
+    .then((r) => {
+      if (!r.ok) throw Error('Emoji unavailable');
+      return r.json();
+    })
+    .then((data) => {
+      try {
+        localStorage.setItem('smr-emoji-v1', JSON.stringify(data));
+      } catch {}
+      return data;
+    })
+    .catch((error) => {
+      emojiCatalogue = null;
+      throw error;
+    }));
+}
+window.addEventListener('load', () => {
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1000));
+  idle(() => loadEmojiCatalogue().catch(() => {}));
+});
+
 window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
   const host = document.querySelector('#chat');
   host.innerHTML = `
@@ -114,7 +144,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
   function iconButton(icon, label, handler) {
     const b = button('', handler);
     b.className = 'icon-button chat-action';
-    b.title = label;
+
     b.setAttribute('aria-label', label);
     const i = document.createElement('span');
     i.className = 'material-symbols-outlined';
@@ -277,20 +307,9 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     back.classList.add('chat-back');
     header.prepend(back);
     if (data.thread.kind === 'space') {
-      const controls = document.createElement('details');
-      controls.className = 'chat-members';
-      const toggle = document.createElement('summary');
-      toggle.textContent = (data.thread.member_count ?? data.thread.members.length) + ' members';
-      controls.append(toggle);
-      const members = document.createElement('p');
-      members.textContent = data.thread.members.length
-        ? data.thread.members.join(', ')
-        : 'Member list is private.';
-      controls.append(members);
-      header.append(controls);
-      if (data.thread.can_manage) controls.append(button('Add member', () => setup('invite')));
+      if (data.thread.can_manage) header.append(button('Add member', () => setup('members')));
       else if (data.thread.can_leave !== false)
-        controls.append(
+        header.append(
           button('Leave space', async () => {
             try {
               await callServer('chatSpace', {
@@ -438,12 +457,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
                 status = dialog.querySelector('[role=status]');
               input.focus();
               try {
-                const all = await (emojiCatalogue ??= fetch('./reaction-catalogue.json').then(
-                  (r) => {
-                    if (!r.ok) throw Error();
-                    return r.json();
-                  },
-                ));
+                const all = await loadEmojiCatalogue();
                 const draw = () => {
                   results.replaceChildren();
                   const hits = all.filter(
@@ -457,7 +471,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
                       choose(emoji);
                     });
                     b.className = 'emoji-choice';
-                    b.title = label;
+
                     b.setAttribute('aria-label', label);
                     results.append(b);
                   }
@@ -498,6 +512,18 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
             );
         }
         row.append(actions);
+        if (
+          data.thread.kind === 'space' &&
+          data.thread.label === 'Tasks' &&
+          message.sender === 'SMR'
+        ) {
+          const open = button('View task actions', () => {
+            location.hash = 'contribute';
+            document.querySelector('[data-view="contribute"]')?.click();
+          });
+          open.className = 'tonal-button';
+          row.append(open);
+        }
         if (message.reactions?.length) {
           const reactions = document.createElement('div');
           reactions.className = 'chat-reactions';
