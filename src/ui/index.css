@@ -39,3 +39,26 @@
  #contribute #year-form .ui-select-trigger, #contribute .workspace-actions > button, #contribute #year-form > button {min-height:48px;border-radius:999px}
  #community-list .task-row {border:0;box-shadow:none}
 }
+@layer app {
+  /* Shared surfaces and type hierarchy across the four main workspaces. */
+  .workspace-heading {gap:24px; margin-block:12px 28px}
+  .workspace-heading h1, .catalogue-card-heading h1 {font-size:clamp(28px,3vw,36px);line-height:1.2;letter-spacing:-.025em;font-weight:600}
+  .workspace-heading p {margin-block:8px 0;color:var(--m3e-sys-color-on-surface-variant)}
+  .catalogue-card, .contribution-section, .account-action-card, .balance-summary, .account-insights, .admin-tools, .request-history, #top .catalogue-extras details {background:var(--m3e-sys-color-surface-container-low);border:0;box-shadow:none;border-radius:28px}
+  .catalogue-card {padding:clamp(20px,3vw,32px)}
+  .contribution-section, .account-action-card, .balance-summary {padding:24px}
+  #top :is(.classroom-card,.resource-card) {border-radius:24px;box-shadow:none}
+  #chat .chat-layout {overflow:hidden;border-radius:28px;background:var(--m3e-sys-color-surface-container-low);border:0}
+  #chat .chat-layout aside {background:var(--m3e-sys-color-surface-container);border:0}
+  #chat .chat-thread {background:var(--m3e-sys-color-surface-container-low)}
+  .app-navigation {background:var(--m3e-sys-color-surface-container-low)}
+  .app-navigation button {font-size:12px;font-weight:600}
+  .app-navigation button[aria-current] {color:var(--m3e-sys-color-on-secondary-container)}
+  :is(button,a,input,textarea,select):focus-visible {outline:3px solid var(--m3e-sys-color-primary);outline-offset:3px}
+  @media (max-width:600px) {
+    .workspace-heading {align-items:flex-start;gap:16px}
+    .workspace-actions {justify-content:flex-start}
+    .catalogue-card, .contribution-section, .account-action-card, .balance-summary {padding:20px}
+    #chat .chat-layout {border-radius:20px}
+  }
+}
