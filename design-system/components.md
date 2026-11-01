@@ -1,19 +1,11 @@
-# Component catalogue and migration status
+# Kyra Labs UI
 
-Verified reference: https://m3e.kyralabs.dev/ (documentation v1.8.0, inspected 1 November 2026).
-Implementation status: Kyra Labs is not yet integrated. This is an incremental adoption policy, not a completed migration.
+Kyra Labs 1.8.0 is bundled locally through `src/ui/index.js` and `src/ui/index.css`. Run `npm run build:ui` after editing either entry point.
 
-| Purpose | Current adapter / implementation | Migration requirement |
-| --- | --- | --- |
-| Primary / secondary actions | ui-components.js, shared button classes | Verify Kyra Button API, preserve disabled and submit behavior |
-| Icon actions | shared icon-button, Google Material Symbols | Verify icon button API, require accessible label |
-| Selection | ui-components.js select adapter | Verify keyboard and form behavior before replacing |
-| Dialogs | native dialog with shared account-dialog styling | Keep focus trapping, Escape and return focus |
-| Network loading | SMRProgress / page-progress | One page-level bar; local text only |
-| Catalogue cards | app.js / website-extras.js | Preserve navigation and access requests |
-| Chat | chat-ui.js | Preserve safe text rendering, drafts and message authorization |
-| Motion | reduced-motion-aware browser transitions | Existing custom transitions are temporary exceptions |
+Shared adapters cover buttons, icon buttons, text fields, select menus, cards and dialogs. MenuPopup and DialogLayout supply popup positioning, motion, focus handling and Escape behavior. Google Material Symbols remain the icon system. The generated theme is in assets/theme.css.
 
-Current exceptions: legacy styles.css, mono-theme.css and expressive-ui.css contain custom values and overlapping selectors. Consolidate by component when adopting verified library controls. Avoid new global overrides.
+Application code uses window.SMRMaterial for dialogs and menu integration. New shared controls belong in src/ui rather than individual feature files. Preserve native form validation and accessible labels.
 
-Release verification: repository formatter, JavaScript syntax, relevant interaction checks, mobile/tablet/desktop screenshot review, keyboard and reduced-motion checks. Screenshot baselines require human visual review. Cross-browser and axe automation remain to be integrated.
+Legacy layout CSS is isolated in the legacy cascade layer. Navigation, chat bubbles, pixel editor, progress and domain-specific cards retain application layout rules. These are explicit remaining custom components, not claims of native Kyra implementations.
+
+Verification runs Chromium desktop/mobile, Firefox tablet and WebKit mobile with axe and overflow checks. Current fixtures cover main empty states and proposal dialog behavior. CI screenshots are review artifacts; automatic candidate generation is not a visual-regression gate. Populated-state coverage and reviewed cross-browser baselines remain follow-up work.
