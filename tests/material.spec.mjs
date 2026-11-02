@@ -1,3 +1,5 @@
+import {readFileSync} from 'node:fs';
+const catalogue=JSON.parse(readFileSync(new URL('../catalogue-fallback.json',import.meta.url),'utf8'));
 import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 const member={member_id:'test',school_email:'test@students.uonbi.ac.ke',delivery_email:'test@students.uonbi.ac.ke',handle:'Test member',is_admin:true,available_coins:100,academic_year:2};
@@ -7,7 +9,7 @@ test.beforeEach(async({page})=>{
   const action=route.request().postDataJSON()?.action;
   const responses={
    member_catalogue_state:{member,treasury_balance_coins:100,verified_access_ids:[]},
-   catalogue_snapshot:{nodes:[],generated_at:new Date().toISOString()},
+   catalogue_snapshot:{...catalogue,stale:false},
    site_tips:{tips:[]},
    community_tasks:{tasks:[{id:'fixture-open',title:'Add worked examples for Introduction to Programming',status:'open',target_path:'Year 1 / Semester 1',note:'Explain loops and arrays with clear examples.',reward_coins:5,votes:3},{id:'fixture-unfunded',title:'Organise past papers for Cloud Computing Technology & Applications',status:'open',target_path:'Year 4 / Semester 1',note:'Group papers by year and include marking guides where available.',reward_coins:0,votes:0}]},
    community_review_queue:{mine:[],items:[],reviews:[],queue:[],academic_year:2},
@@ -23,6 +25,7 @@ for(const view of ['top','contribute','activity','chat']){
   await page.goto('http://127.0.0.1:4188');
   await page.locator('[data-view="'+view+'"]').click();
   await expect(page.locator('#'+view)).toBeVisible();
+  if(view==='top') await expect(page.locator('#sync-status')).toContainText('Synced');
   const results=await new AxeBuilder({page}).analyze();
   console.log(view,results.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})));
   await page.evaluate(()=>document.fonts.ready);
@@ -59,4 +62,5 @@ for(const name of ['Edit avatar','Repository dashboard']){
   await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
  });
 }
+
 
