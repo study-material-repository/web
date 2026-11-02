@@ -96,3 +96,9 @@
 }
 
 @layer app { #chat .chat-bubble.mine > small {color:var(--m3e-sys-color-on-primary-container)} }
+@layer app {
+ #chat .chat-bubble p :is(strong,em,s,code) {display:inline;color:inherit;font-size:inherit;line-height:inherit}
+ #chat .chat-bubble p strong {font-weight:700}
+ #message-compose .m3e-text-field__container {border-radius:var(--m3e-sys-shape-corner-full);overflow:hidden}
+ #message-compose .m3e-text-field__container::after {display:none}
+}

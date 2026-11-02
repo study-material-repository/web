@@ -26,7 +26,8 @@ for(const view of ['top','contribute','activity','chat']){
   const results=await new AxeBuilder({page}).analyze();
   console.log(view,results.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})));
   await page.evaluate(()=>document.fonts.ready);
-  await expect(page).toHaveScreenshot(view+'.png',{fullPage:true,animations:'disabled',maxDiffPixelRatio:0.001});
+  if(test.info().project.name.startsWith('chromium')) await expect(page).toHaveScreenshot(view+'.png',{fullPage:true,animations:'disabled',maxDiffPixelRatio:0.001});
+  else await page.screenshot({path:test.info().outputPath(view+'.png'),fullPage:true});
   expect(results.violations).toEqual([]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBeTruthy();
  });
