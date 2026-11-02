@@ -142,7 +142,7 @@
     status.innerHTML = '<span class="spinner" aria-label="Loading tips"></span>';
     modal.append(heading, status);
     document.body.append(modal);
-    modal.showModal();
+    window.SMRMaterial.open(modal);
     modal.onclose = () => modal.remove();
     let settings;
     try {

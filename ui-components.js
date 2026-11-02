@@ -19,7 +19,8 @@
         label?.firstChild?.textContent?.trim() ||
         'Choose an option';
       this.menu = document.createElement('div');
-      this.menu.className = 'ui-select-options';
+      this.menu.className = 'ui-select-options m3e-menu';
+      this.popup = new window.SMRMaterial.MenuPopup(this.menu);
       this.menu.setAttribute('popover', 'auto');
       this.menu.setAttribute('role', 'listbox');
       this.menu.setAttribute('aria-label', this.label);
@@ -30,7 +31,7 @@
       this.button.onclick = (event) => {
         if (event.detail && this.wasOpen) {
           this.wasOpen = false;
-          if (this.menu.matches(':popover-open')) this.menu.hidePopover();
+          if (this.menu.matches(':popover-open')) this.popup.close();
           return;
         }
         this.open();
@@ -81,7 +82,7 @@
     }
     open() {
       if (this.menu.matches(':popover-open')) {
-        this.menu.hidePopover();
+        this.popup.close();
         return;
       }
       this.refresh();
@@ -90,6 +91,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = option.textContent;
+        button.className = 'm3e-menu__item';
         button.setAttribute('role', 'option');
         button.setAttribute('aria-selected', String(option.selected));
         button.disabled = option.disabled;
@@ -97,18 +99,12 @@
           this.select.value = option.value;
           this.select.dispatchEvent(new Event('change', { bubbles: true }));
           this.refresh();
-          this.menu.hidePopover();
+          this.popup.close();
           this.button.focus();
         };
         this.menu.append(button);
       });
-      const rect = this.button.getBoundingClientRect();
-      this.menu.style.left = Math.max(8, rect.left) + 'px';
-      this.menu.style.top = Math.min(rect.bottom + 4, innerHeight - 160) + 'px';
-      this.menu.style.width = Math.min(rect.width, innerWidth - 16) + 'px';
-      this.menu.style.maxHeight =
-        Math.max(140, innerHeight - Math.min(rect.bottom + 4, innerHeight - 160) - 12) + 'px';
-      this.menu.showPopover();
+      this.popup.open({ anchor: this.button, onDismiss: () => this.popup.close() });
       (
         this.menu.querySelector('[aria-selected="true"]:not(:disabled)') ||
         this.menu.querySelector('button:not(:disabled)')
