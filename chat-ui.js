@@ -267,7 +267,13 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
           select({ kind, id: item.id }),
         );
         if (kind === 'space') b.prepend(spaceIcon(item.label));
-        if (kind === 'dm' && window.smrAvatar) b.prepend(smrAvatar(item.avatar_seed || item.label));
+        if (kind === 'dm' && window.smrAvatar) {
+          const portrait = smrAvatar(item.avatar_seed || item.label).cloneNode(true);
+          portrait.removeAttribute('tabindex');
+          portrait.removeAttribute('role');
+          portrait.setAttribute('aria-hidden', 'true');
+          b.prepend(portrait);
+        }
         if (selected?.id === item.id) b.setAttribute('aria-current', 'true');
         list.append(b);
       });
@@ -291,7 +297,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     compose.hidden = data.thread.can_send === false;
     const header = $('thread-header');
     header.replaceChildren();
-    const title = document.createElement('h2');
+    const title = document.createElement('h1');
     title.textContent = data.thread.label;
     if (data.thread.kind === 'space') header.prepend(spaceIcon(data.thread.label));
     header.append(title);

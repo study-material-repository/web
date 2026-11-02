@@ -62,3 +62,43 @@
     #chat .chat-layout {border-radius:20px}
   }
 }
+
+@layer app {
+ html[data-theme="mono"] {
+  --md-sys-color-primary:var(--m3e-sys-color-primary);
+  --md-sys-color-on-primary:var(--m3e-sys-color-on-primary);
+  --md-sys-color-primary-container:var(--m3e-sys-color-primary-container);
+  --md-sys-color-on-primary-container:var(--m3e-sys-color-on-primary-container);
+  --md-sys-color-secondary-container:var(--m3e-sys-color-secondary-container);
+  --md-sys-color-on-secondary-container:var(--m3e-sys-color-on-secondary-container);
+  --md-sys-color-surface:var(--m3e-sys-color-surface);
+  --md-sys-color-surface-container-lowest:var(--m3e-sys-color-surface-container-lowest);
+  --md-sys-color-surface-container-low:var(--m3e-sys-color-surface-container-low);
+  --md-sys-color-surface-container:var(--m3e-sys-color-surface-container);
+  --md-sys-color-surface-container-high:var(--m3e-sys-color-surface-container-high);
+  --md-sys-color-surface-container-highest:var(--m3e-sys-color-surface-container-highest);
+  --md-sys-color-on-surface:var(--m3e-sys-color-on-surface);
+  --md-sys-color-on-surface-variant:var(--m3e-sys-color-on-surface-variant);
+  --md-sys-color-outline:var(--m3e-sys-color-outline);
+  --md-sys-color-outline-variant:var(--m3e-sys-color-outline-variant);
+ }
+}
+
+@layer app {
+ .app-navigation .m3e-navigation-item {background:none;border-radius:0;min-height:64px}
+ .app-navigation .m3e-navigation-item__icon {background:none;padding:0}
+}
+@layer app {
+ .app-navigation .m3e-navigation-item[aria-current] {background:none;border-radius:0}
+ .app-navigation .m3e-navigation-item[aria-current] .material-symbols-outlined {background:none;border-radius:0;padding:0}
+ .ui-select-trigger.m3e-button::after {content:'expand_more';font:24px/1 'Material Symbols Outlined';position:static;display:block;inset:auto;transform:none;opacity:1}
+ .task-search .m3e-text-field__container {border-radius:var(--m3e-sys-shape-corner-full)}
+}
+
+@layer app { #chat .chat-bubble.mine > small {color:var(--m3e-sys-color-on-primary-container)} }
+@layer app {
+ #chat .chat-bubble p :is(strong,em,s,code) {display:inline;color:inherit;font-size:inherit;line-height:inherit}
+ #chat .chat-bubble p strong {font-weight:700}
+ #message-compose .m3e-text-field__container {border-radius:var(--m3e-sys-shape-corner-full);overflow:hidden}
+ #message-compose .m3e-text-field__container::after {display:none}
+}
