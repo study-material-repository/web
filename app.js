@@ -1909,12 +1909,40 @@
   taskTools.innerHTML =
     '<div class="task-tabs" role="group" aria-label="Task status"><button type="button" data-task-filter="open" aria-pressed="true">Open</button><button type="button" data-task-filter="completed" aria-pressed="false">Completed</button></div><label class="task-search"><span class="material-symbols-outlined" aria-hidden="true">search</span><input type="search" placeholder="Search tasks" aria-label="Search tasks"></label><p class="task-count" role="status"></p>';
   document.querySelector('#community-list').before(taskTools);
+  const tagFilters = document.createElement('div');
+  tagFilters.className = 'task-tag-filters';
+  tagFilters.innerHTML =
+    '<h3>Find tasks you can do</h3><p>Filter by year, semester or task type. Choose All tags to explore everything.</p><label>Task tag<select id="task-tag"><option value="">All tags</option></select></label><details><summary>Advanced filters</summary><label>Minimum reward<input id="task-min-reward" type="number" min="0" value="0"></label></details><button type="button" id="save-task-filters">Save my filters</button>';
+  taskTools.after(tagFilters);
+  const tagSelect = tagFilters.querySelector('select');
+  tagSelect.onchange = filterTasks;
+  tagFilters.querySelector('input').oninput = filterTasks;
+  tagFilters.querySelector('button').onclick = () => {
+    localStorage.setItem('smr-task-tag', tagSelect.value);
+    showToast('Task filter saved on this device.');
+  };
+  function taskTags(task) {
+    const tags = new Set([String(task.task_type || 'general').replaceAll('_', '-')]);
+    const text = [task.target_path, task.title, task.note].join(' ');
+    for (const m of text.matchAll(/#([a-z0-9.-]+)/gi)) tags.add(m[1].toLowerCase());
+    const semester = text.match(/\b([1-4])\.([12])\b/);
+    if (semester) {
+      tags.add(semester[0]);
+      tags.add('year-' + semester[1]);
+    }
+    const year = text.match(/year\s*([1-4])/i);
+    if (year) tags.add('year-' + year[1]);
+    if (!semester && !year) tags.add('general');
+    return [...tags];
+  }
   function filterTasks() {
     let count = 0;
     document.querySelectorAll('#community-list > .community-task').forEach((card) => {
       card.hidden =
         (card.dataset.status === 'completed') !== (taskFilter === 'completed') ||
-        !card.dataset.search.includes(taskQuery);
+        !card.dataset.search.includes(taskQuery) ||
+        (tagSelect.value && !JSON.parse(card.dataset.tags || '[]').includes(tagSelect.value)) ||
+        Number(card.dataset.reward || 0) < Number(tagFilters.querySelector('input').value || 0);
       if (!card.hidden) count++;
     });
     taskTools.querySelector('.task-count').textContent = count + (count === 1 ? ' task' : ' tasks');
@@ -1974,10 +2002,19 @@
       status.textContent = result.tasks.length
         ? ''
         : 'No tasks yet. Propose something useful for the class.';
+      const availableTags = [...new Set(result.tasks.flatMap(taskTags))].sort();
+      const previous = tagSelect.value || localStorage.getItem('smr-task-tag') || '';
+      tagSelect.replaceChildren(
+        new Option('All tags', ''),
+        ...availableTags.map((tag) => new Option('#' + tag, tag)),
+      );
+      tagSelect.value = availableTags.includes(previous) ? previous : '';
       for (const task of result.tasks) {
         const card = document.createElement('details');
         card.className = 'community-task task-row';
         card.dataset.status = task.status;
+        card.dataset.tags = JSON.stringify(taskTags(task));
+        card.dataset.reward = task.reward_coins || 0;
         card.dataset.search = [task.title, task.note, task.target_path].join(' ').toLowerCase();
         const summary = document.createElement('summary');
         const marker = document.createElement('span');
@@ -2020,7 +2057,19 @@
         card.append(summary);
         const contents = document.createElement('div');
         contents.className = 'task-row-details';
-        contents.append(path, note);
+        const tags = document.createElement('div');
+        tags.className = 'task-tags';
+        for (const tag of taskTags(task)) {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.textContent = '#' + tag;
+          chip.onclick = () => {
+            tagSelect.value = tag;
+            filterTasks();
+          };
+          tags.append(chip);
+        }
+        contents.append(tags, path, note);
         card.append(contents);
         if (state.member?.is_admin)
           contents.append(actionButton('Edit task', () => editTask(task)));
@@ -2370,8 +2419,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'tonal-button';
-        button.textContent =
-          amount === 'Custom' ? amount : amount + (amount === 1 ? ' coin' : ' coins');
+        button.textContent = amount === 'Custom' ? amount : '+' + amount;
         button.onclick = () => {
           const input = document.querySelector('#fund-amount');
           if (input.disabled) return;
@@ -2380,7 +2428,7 @@
         };
         presets.append(button);
       }
-      document.querySelector('#fund-amount').insertAdjacentElement('afterend', presets);
+      document.querySelector('#fund-form').prepend(presets);
     }
     window.SMRMaterial.open(fundDialog);
   }

@@ -142,3 +142,21 @@
  #chat .chat-layout aside {width:100%;box-sizing:border-box}
  .tree-row {display:flex}
 }
+@layer app {
+ .m3e-text-field__container {border-radius:16px;overflow:hidden}
+ .m3e-text-field__container::after {display:none}
+ .auth-form {display:flex;flex-direction:column;gap:20px}
+ .auth-form label {display:grid;gap:8px}
+ .school-input {display:flex;align-items:center;min-width:0;border-radius:16px;overflow:hidden;background:var(--m3e-sys-color-surface-container-high);border:0}
+ .school-input>.m3e-text-field {flex:1;min-width:0}
+ .school-input>span:last-child {padding:12px;font-size:12px;white-space:nowrap}
+ #task-dialog>.m3e-dialog__container {width:min(760px,100%);max-inline-size:760px}
+ .task-tag-filters {padding:20px;border-radius:24px;background:var(--m3e-sys-color-surface-container-low);margin:16px 0;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+ .task-tag-filters h3,.task-tag-filters>p {flex-basis:100%;margin:0}
+ .task-tags,#fund-presets,.task-row-details {gap:12px}
+ .task-tags,#fund-presets {display:flex;flex-wrap:wrap;margin-block:12px}
+ .task-row-details>button {margin:6px}
+ .task-search input:focus {outline:none;border:0;box-shadow:none}
+ @media(min-width:901px){.app-navigation {justify-content:center}}
+ .emoji-grid {gap:10px}
+}
