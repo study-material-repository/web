@@ -64,3 +64,10 @@ for(const name of ['Edit avatar','Repository dashboard']){
 }
 
 
+test('message appears before the send request finishes',async({page})=>{
+ await page.goto('http://127.0.0.1:4188');await page.locator('[data-view=chat]').click();
+ let release;const pending=new Promise(resolve=>release=resolve);
+ await page.route('**/api',async route=>{if(route.request().postDataJSON()?.action!=='chat_send')return route.fallback();await pending;await route.fulfill({json:{ok:true,data:{}}});});
+ await page.locator('#message-body').fill('Optimistic send check');await page.locator('#message-compose').evaluate(form=>form.requestSubmit());
+ try {await expect(page.locator('.pending-message')).toContainText('Optimistic send check');await expect(page.locator('#message-body')).toHaveValue('');await expect(page.locator('#page-progress')).toBeHidden();}finally{release();}
+});

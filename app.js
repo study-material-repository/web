@@ -166,7 +166,10 @@
     }
   }
   async function sendServer(name, ...args) {
-    const silent = name === 'chatHub' || name === 'websiteData' || cachedReads.has(name);
+    const silent =
+      ['chatHub', 'chatSend', 'chatMessage'].includes(name) ||
+      name === 'websiteData' ||
+      cachedReads.has(name);
     if (!silent) window.SMRProgress?.start();
     try {
       return await sendServerRequest(name, ...args);
@@ -1036,6 +1039,18 @@
       });
     }
     row.append(label);
+    if (!isFolder) {
+      const reveal = document.createElement('button');
+      reveal.className = 'file-name-reveal icon-button';
+      reveal.type = 'button';
+      reveal.setAttribute('aria-label', 'Show full file name');
+      reveal.textContent = '…';
+      reveal.onclick = () => {
+        row.classList.toggle('show-full-name');
+        reveal.setAttribute('aria-expanded', String(row.classList.contains('show-full-name')));
+      };
+      row.append(reveal);
+    }
     row.addEventListener('click', () => {
       state.selectedNodeId = String(node.id);
     });

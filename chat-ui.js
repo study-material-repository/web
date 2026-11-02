@@ -137,7 +137,10 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'chat-list-item';
-    b.textContent = label;
+    const text = document.createElement('span');
+    text.className = 'chat-item-label';
+    text.textContent = label;
+    b.append(text);
     b.onclick = handler;
     return b;
   }
@@ -555,7 +558,21 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     }
   }
   async function changeMessage(message, operation, extra = {}) {
+    if (message.changing) return;
+    message.changing = true;
     try {
+      if (operation === 'react' && extra.active) {
+        for (const previous of message.reactions || [])
+          if (previous.mine && previous.emoji !== extra.emoji) {
+            await callServer('chatMessage', {
+              [selected.kind === 'space' ? 'space_id' : 'peer']: selected.id,
+              message_id: message.id,
+              operation: 'react',
+              emoji: previous.emoji,
+              active: false,
+            });
+          }
+      }
       await callServer('chatMessage', {
         [selected.kind === 'space' ? 'space_id' : 'peer']: selected.id,
         message_id: message.id,
@@ -565,6 +582,8 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       await load();
     } catch (error) {
       showToast(error.message);
+    } finally {
+      message.changing = false;
     }
   }
   $('chat-setup-form').onsubmit = async (event) => {
@@ -610,6 +629,19 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     submit.disabled = true;
     submit.classList.add('is-loading');
     const target = { ...selected };
+    let optimistic;
+    if (!editing) {
+      optimistic = document.createElement('article');
+      optimistic.className = 'chat-bubble mine pending-message';
+      const content = document.createElement('p');
+      content.textContent = body;
+      const status = document.createElement('small');
+      status.textContent = 'Sending…';
+      optimistic.append(content, status);
+      feed.append(optimistic);
+      $('message-body').value = '';
+      feed.scrollTop = feed.scrollHeight;
+    }
     retryId = retryId || crypto.randomUUID();
     try {
       if (editing) {
@@ -634,6 +666,10 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     } catch (error) {
       showToast(error.message);
     } finally {
+      if (optimistic?.isConnected) {
+        optimistic.remove();
+        if (retryId && !$('message-body').value) $('message-body').value = body;
+      }
       inFlight = false;
       submit.disabled = false;
       submit.classList.remove('is-loading');

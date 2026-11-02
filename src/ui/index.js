@@ -7,7 +7,7 @@ const primary = '#contribute-button,#new-dm,#message-compose>button,#send-coins-
 function enhance(root=document) {
   root.querySelectorAll('button').forEach(button=>{
     if(button.closest('.avatar-editor-grid,.avatar-palette'))return;
-    if(button.matches('[data-view],.m3e-menu__item'))return;
+    if(button.matches('[data-view],.m3e-menu__item,.tree-toggle,.chat-list-item'))return;
     if(button.matches('.classroom-card')){button.classList.add('m3e-card','m3e-card--interactive');return;}
     if(button.matches('.icon-button,.chat-action'))button.classList.add('m3e-icon-button');
     else {
@@ -22,7 +22,7 @@ function enhance(root=document) {
   root.querySelectorAll('.material-symbols-outlined').forEach(icon=>icon.classList.add('m3e-icon'));
   root.querySelectorAll('.resource-card,.review-card,.account-action-card,.balance-summary').forEach(card=>card.classList.add('m3e-card'));
   root.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea').forEach(input=>{
-    if(input.closest('.m3e-text-field'))return;
+    if(input.closest('.m3e-text-field,.search,.task-search'))return;
     const wrapper=document.createElement('span');
     wrapper.className='m3e-text-field';
     const container=document.createElement('span');container.className='m3e-text-field__container';
