@@ -1,3 +1,4 @@
+import {renderCheckbox} from '@kyralabs/m3e-elements/checkbox.js';
 import '@kyralabs/m3e-elements/ripple.js';
 import {MenuPopup} from '@kyralabs/m3e-elements/menu-popup.js';
 import {DialogLayout} from '@kyralabs/m3e-elements/dialog-layout.js';
@@ -27,6 +28,15 @@ function enhance(root=document) {
     const container=document.createElement('span');container.className='m3e-text-field__container';
     input.before(wrapper);wrapper.append(container);container.append(input);
     input.classList.add('m3e-text-field__input');
+  });
+  root.querySelectorAll('input[type=checkbox]').forEach(input=>{
+    if(input.classList.contains('m3e-checkbox__input'))return;
+    const label=input.closest('label');if(!label)return;
+    const text=label.textContent.trim();
+    const shell=document.createElement('label');
+    const generated=renderCheckbox(shell,text);
+    input.classList.add('m3e-checkbox__input');generated.replaceWith(input);
+    label.classList.add('m3e-checkbox');label.replaceChildren(...shell.childNodes);
   });
   root.querySelectorAll('dialog').forEach(dialog=>{
     if(dialogs.has(dialog))return;
@@ -62,3 +72,4 @@ new MutationObserver(records=>{
  if(records.some(r=>r.addedNodes.length))enhance();
 }).observe(document.body,{childList:true,subtree:true});
 window.SMRMaterial={enhance,MenuPopup,open(dialog){enhance();dialogs.get(dialog).setOpen(true);},close(dialog){dialogs.get(dialog)?.setOpen(false);}};
+

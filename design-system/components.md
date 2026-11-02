@@ -1,11 +1,11 @@
-# Kyra Labs UI
+# Kyra Labs UI component contract
 
-Kyra Labs 1.8.0 is bundled locally through `src/ui/index.js` and `src/ui/index.css`. Run `npm run build:ui` after editing either entry point.
+Kyra Labs 1.8.0 is bundled locally. Build with npm run build:ui; application code uses src/ui adapters rather than importing another UI library.
 
-Shared adapters cover buttons, icon buttons, text fields, select menus, cards and dialogs. MenuPopup and DialogLayout supply popup positioning, motion, focus handling and Escape behavior. Google Material Symbols remain the icon system. The generated theme is in assets/theme.css.
+Implemented adapters: buttons, icon buttons, text fields, checkboxes (library renderCheckbox preserving native inputs), select menus (MenuPopup), dialogs (DialogLayout), cards, navigation rail and mobile navigation bar. Google Material Symbols supply icons. Legacy colour roles resolve to the generated Kyra theme.
 
-Application code uses window.SMRMaterial for dialogs and menu integration. New shared controls belong in src/ui rather than individual feature files. Preserve native form validation and accessible labels.
+Application-specific compositions remain: chat messages and reactions, file cards, expandable task rows, repository statistics, pixel-art canvas and the request-counted page progress bar. They retain domain behavior and use shared theme roles; these are not claimed as native Kyra components. Legacy layout CSS remains isolated in its cascade layer and must not be extended with competing global component styles.
 
-Legacy layout CSS is isolated in the legacy cascade layer. Navigation, chat bubbles, pixel editor, progress and domain-specific cards retain application layout rules. These are explicit remaining custom components, not claims of native Kyra implementations.
+Verification includes populated task expand/search, incoming/outgoing markdown chat, administrator dashboard, avatar editor, proposal dialog, axe and horizontal overflow checks. Chromium desktop/mobile screenshots are committed baselines and compared in CI; Firefox tablet and WebKit mobile run behavior/accessibility checks and capture review images. Baseline updates must be intentional and visually reviewed; CI never automatically updates them.
 
-Verification runs Chromium desktop/mobile, Firefox tablet and WebKit mobile with axe and overflow checks. Current fixtures cover main empty states and proposal dialog behavior. CI screenshots are review artifacts; automatic candidate generation is not a visual-regression gate. Populated-state coverage and reviewed cross-browser baselines remain follow-up work.
+The migration remains on material-migration. The restored main branch is the live site. Review the branch preview before any further production rollout.
