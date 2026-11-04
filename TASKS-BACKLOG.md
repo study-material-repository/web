@@ -1,6 +1,6 @@
 # SMR task and UI work — 4 November 2026
 
-Joe authorized publication on 4 November 2026. Preview: http://localhost:4190/#contribute (sample data; never changes live accounts). Web branch: tasks-preview. Existing task tags are never inferred or bulk-assigned.
+Joe authorized publication on 4 November 2026. Preview: http://localhost:4190/#contribute (sample data; never changes live accounts). Web branch: tasks-preview. Existing task tags were initially left untouched. Joe explicitly requested catalogue-based tag population on 4 November; the reviewed import is now applied.
 
 ## Released features
 - Admin create/edit/delete/complete, arbitrary task type and treasury reward, explicit close/delete confirmation.
@@ -37,3 +37,15 @@ Joe authorized publication on 4 November 2026. Preview: http://localhost:4190/#c
 - All 25 new reward records are confirmed synchronized to both configured mirrors. All 89 open tasks now have reserved rewards.
 - Consider legacy notification receipt retention and recovery of ambiguous email-send interruptions.
 - Keep Google OAuth setup deferred until a Web client ID is supplied; current password/email-code flow remains.
+
+
+## Follow-up release — task editing and menu fixes
+- Fixed non-ASCII signed requests on the website/Core boundary and explicitly UTF-8 encoded the Core/ledger signature. Tested emoji, accented text and signature tampering.
+- Added administrator-only metadata tagging that leaves escrow and rewards untouched. Applied tags to 183 tasks: 178 mapped to catalogue units/semesters/years, five broad tasks tagged general; preserved existing tags.
+- Deleted Refer a Comrade through the normal admin workflow. 88 open tasks remain; all other rewards/descriptions verified unchanged.
+- Task types now show existing workflows in a dropdown, with a custom workflow option and explanatory copy.
+- Fixed the school-email input exception caused by the input adapter wrapping the field.
+- Compact icon-first context menus reposition after layout changes, stay within the viewport and above mobile navigation. Removed file-name pill styling.
+- Wider task editor, dropdowns that fit short lists, consistent Google Sans, green topic accents and warm reward badges.
+- Transfer email means coin-transfer notifications, not changes to delivery addresses. Google OAuth remains pending a public Web client ID.
+- Release checks: all 26 Chromium desktop/mobile interactions and accessibility checks passed; Contribute screenshot changes reviewed. Core deployed as version 61, gateway healthy.

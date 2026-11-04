@@ -90,3 +90,11 @@
   --m3e-sys-motion-spring-slow-effects-bezier: var(--m3e-sys-motion-spring-expressive-slow-effects-bezier);
   --m3e-sys-motion-spring-slow-effects-bezier-duration: var(--m3e-sys-motion-spring-expressive-slow-effects-bezier-duration);
 }
+
+:root {
+  /* SMR semantic accents: green for topics, warm gold for funded rewards. */
+  --m3e-sys-color-tertiary: #146c4d;
+  --m3e-sys-color-on-tertiary: #ffffff;
+  --m3e-sys-color-tertiary-container: #d7f3e3;
+  --m3e-sys-color-on-tertiary-container: #073b28;
+}

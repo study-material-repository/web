@@ -593,7 +593,21 @@
     treeMenu.hidden = true;
     state.contextNodeId = '';
   }
+  let menuPoint = { x: 12, y: 12 };
+  function positionTreeMenu() {
+    if (treeMenu.hidden) return;
+    const width = Math.min(window.innerWidth, document.documentElement.clientWidth);
+    const nav = document.querySelector('.app-navigation');
+    const bottom = width <= 600 && nav ? nav.getBoundingClientRect().top : window.innerHeight;
+    treeMenu.style.maxHeight = Math.max(160, bottom - 24) + 'px';
+    const rect = treeMenu.getBoundingClientRect();
+    treeMenu.style.left = Math.max(12, Math.min(menuPoint.x, width - rect.width - 12)) + 'px';
+    treeMenu.style.top = Math.max(12, Math.min(menuPoint.y, bottom - rect.height - 12)) + 'px';
+  }
+  new ResizeObserver(positionTreeMenu).observe(treeMenu);
+  window.addEventListener('resize', positionTreeMenu);
   function showTreeMenu(event, nodeElement) {
+    menuPoint = { x: event.clientX, y: event.clientY };
     event.preventDefault();
     state.contextNodeId = nodeElement.dataset.nodeId;
     state.contextDepth = Number(nodeElement.dataset.depth);
@@ -638,11 +652,8 @@
       document.querySelector('#tree-menu-expand-level').hidden = true;
     }
     treeMenu.hidden = false;
-    const menuRect = treeMenu.getBoundingClientRect();
-    treeMenu.style.left =
-      Math.max(12, Math.min(event.clientX, window.innerWidth - menuRect.width - 12)) + 'px';
-    treeMenu.style.top =
-      Math.max(12, Math.min(event.clientY, window.innerHeight - menuRect.height - 12)) + 'px';
+    positionTreeMenu();
+    requestAnimationFrame(positionTreeMenu);
     (isFolder ? treeMenuToggle : treeMenuRequest.hidden ? treeMenuOpen : treeMenuRequest).focus();
   }
   function openAccount() {
@@ -2476,7 +2487,7 @@
   }
   function editTask(task) {
     const modal = document.createElement('dialog');
-    modal.className = 'account-dialog';
+    modal.className = 'account-dialog task-admin-dialog';
     const heading = document.createElement('h2');
     heading.textContent = task.id ? 'Edit task' : 'Create treasury-funded task';
     modal.setAttribute('aria-label', heading.textContent);
@@ -2505,8 +2516,27 @@
       status.append(option);
     }
     status.value = task.status;
-    const taskType = document.createElement('input');
+    const taskType = document.createElement('select');
+    const types = new Map(
+      [...document.querySelectorAll('#task-type option')].map((o) => [o.value, o.textContent]),
+    );
+    if (!types.has('other')) types.set('other', 'Other');
+    if (task.task_type && !types.has(task.task_type))
+      types.set(task.task_type, task.task_type.replaceAll('_', ' '));
+    for (const [value, label] of types) taskType.add(new Option(label.replace(/ —.*$/, ''), value));
+    taskType.add(new Option('Custom workflow…', '__custom'));
     taskType.value = task.task_type || 'other';
+    const customType = document.createElement('input');
+    customType.placeholder = 'e.g. create-study-guide';
+    customType.pattern = '[a-z][a-z0-9_-]{0,39}';
+    const customTypeField = document.createElement('label');
+    customTypeField.textContent = 'Custom workflow name';
+    customTypeField.append(customType);
+    customTypeField.hidden = true;
+    taskType.addEventListener('change', () => {
+      customTypeField.hidden = taskType.value !== '__custom';
+      customType.required = !customTypeField.hidden;
+    });
     const tags = document.createElement('input');
     tags.value = (task.tags || []).join(', ');
     tags.placeholder = 'e.g. year-2, 2.1, csc201';
@@ -2522,14 +2552,20 @@
       ['Treasury reward', reward],
       ['Status', status],
       ['Task type', taskType],
-      ['Tags (comma separated)', tags],
       ['Priority (0–10)', priority],
+      ['Tags (comma separated)', tags],
     ]) {
       const field = document.createElement('label');
       field.textContent = label;
       field.append(input);
       form.append(field);
     }
+    form.append(customTypeField);
+    const typeHelp = document.createElement('p');
+    typeHelp.className = 'dialog-copy';
+    typeHelp.textContent =
+      'Task type describes the work. Tags group tasks by unit, semester, year or topic.';
+    form.append(typeHelp);
     const hint = document.createElement('p');
     hint.textContent =
       'Marking complete here releases unused reward funds. Reviewed submissions receive their reward through review.';
@@ -2569,7 +2605,7 @@
           note: note.value,
           reward_coins: reward.value,
           status: status.value,
-          task_type: taskType.value,
+          task_type: taskType.value === '__custom' ? customType.value.trim() : taskType.value,
           tags: tags.value
             .split(',')
             .map((t) => t.trim())
@@ -3235,7 +3271,10 @@
   };
   document.querySelectorAll('.school-input input').forEach((input) =>
     input.addEventListener('input', () => {
-      input.nextElementSibling.hidden = input.value.includes('@');
+      const suffix = input
+        .closest('.school-input')
+        ?.querySelector(':scope > span:not(.m3e-text-field)');
+      if (suffix) suffix.hidden = input.value.includes('@');
     }),
   );
   // Scroll inside the rounded surface, never along its outer edge.

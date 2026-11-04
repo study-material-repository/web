@@ -7,7 +7,8 @@ const primary = '#contribute-button,#new-dm,#message-compose>button,#send-coins-
 function enhance(root=document) {
   root.querySelectorAll('button').forEach(button=>{
     if(button.closest('.avatar-editor-grid,.avatar-palette'))return;
-    if(button.matches('[data-view],.m3e-menu__item,.tree-toggle,.chat-list-item'))return;
+    if(button.matches('[role=menuitem]')){button.classList.add('m3e-menu__item');if(!button.querySelector('.material-symbols-outlined')){const icon=document.createElement('span');icon.className='material-symbols-outlined m3e-icon';icon.setAttribute('aria-hidden','true');icon.textContent=button.dataset.icon||({'Rename':'edit','Share':'share','Remove access':'person_remove','Who has access':'group','Move to trash':'delete','Copy':'content_copy','Cut':'content_cut','Paste':'content_paste'}[button.textContent.trim()])||'folder_open';button.prepend(icon);}return;}
+    if(button.matches('[data-view],.m3e-menu__item,.tree-toggle,.tree-link,.chat-list-item'))return;
     if(button.matches('.classroom-card')){button.classList.add('m3e-card','m3e-card--interactive');return;}
     if(button.matches('.icon-button,.chat-action'))button.classList.add('m3e-icon-button');
     else {

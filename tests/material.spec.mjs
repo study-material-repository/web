@@ -11,7 +11,7 @@ test.beforeEach(async({page})=>{
    member_catalogue_state:{member,treasury_balance_coins:100,verified_access_ids:[]},
    catalogue_snapshot:{...catalogue,stale:false},
    site_tips:{tips:[]},
-   community_tasks:{tasks:[{id:'fixture-open',title:'Add worked examples for Introduction to Programming',status:'open',target_path:'Year 1 / Semester 1',note:'Explain loops and arrays with clear examples.',reward_coins:5,votes:3},{id:'fixture-unfunded',title:'Organise past papers for Cloud Computing Technology & Applications',status:'open',target_path:'Year 4 / Semester 1',note:'Group papers by year and include marking guides where available.',reward_coins:0,votes:0}]},
+   community_tasks:{tasks:[{id:'fixture-open',title:'Add worked examples for Introduction to Programming',status:'open',target_path:'Year 1 / Semester 1',note:'Explain loops and arrays with clear examples.',reward_coins:5,votes:3,tags:['introduction-to-programming']},{id:'fixture-unfunded',title:'Organise past papers for Cloud Computing Technology & Applications',status:'open',target_path:'Year 4 / Semester 1',note:'Group papers by year and include marking guides where available.',reward_coins:0,votes:0}]},
    community_review_queue:{mine:[],items:[],reviews:[],queue:[],academic_year:2},
    community_profile:{approved_contributions:0,reviews:0,activated_tasks:0,label:'Test member',level:1,points:0,next_level_points:25},
    member_request_history:{items:[],requests:[],history:[]},
@@ -99,4 +99,38 @@ test('chat tools do not resize the message bubble',async({page})=>{
  await expect(bubble).toBeVisible();const before=await bubble.boundingBox();
  await bubble.focus();const after=await bubble.boundingBox();
  expect(after.height).toBe(before.height);expect(after.width).toBe(before.width);
+});
+
+test('task workflow and status menus fit their options',async({page})=>{
+ await page.goto('http://127.0.0.1:4188/#contribute');
+ await page.getByRole('button',{name:'Create task',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Create treasury-funded task'});
+ await dialog.getByRole('button',{name:/Task type:/}).click();
+ const types=page.getByRole('listbox',{name:'Task type',exact:true});
+ await expect(types.getByRole('option',{name:'Find a book',exact:true})).toBeVisible();
+ await expect(types.getByRole('option',{name:'Convert PDF to Doc or Markdown',exact:true})).toBeVisible();
+ await types.getByRole('option',{name:'Find a book',exact:true}).click();
+ await dialog.getByRole('button',{name:/Status:/}).click();
+ const menu=page.getByRole('listbox',{name:'Status',exact:true});
+ await expect(menu.getByRole('option',{name:'deleted',exact:true})).toBeVisible();
+ expect(await menu.evaluate(e=>e.scrollWidth<=e.clientWidth+1&&e.scrollHeight<=e.clientHeight+1)).toBeTruthy();
+ await expect.poll(()=>menu.evaluate(e=>Number(getComputedStyle(e).opacity))).toBeGreaterThan(0.99);
+ await page.screenshot({path:test.info().outputPath('task-status-menu.png')});
+});
+
+test('catalogue menus are compact icon rows and email entry does not throw',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:4188');
+ await page.locator('.classroom-card').first().click({button:'right'});
+ const menu=page.getByRole('menu',{name:'Catalogue actions'});
+ await expect(menu).toBeVisible();
+ await expect.poll(async()=>{const b=await menu.boundingBox();return b.x+b.width;}).toBeLessThanOrEqual(page.viewportSize().width-10);
+ const box=await menu.boundingBox();expect(box.width).toBeLessThanOrEqual(321);
+ for(const button of await menu.getByRole('menuitem').all()){
+   if(await button.isVisible())await expect(button.locator('.material-symbols-outlined')).toHaveCount(1);
+ }
+ await page.screenshot({path:test.info().outputPath('catalogue-menu.png')});
+ await page.evaluate(()=>{const input=document.querySelector('#login-email');input.value='person@students.uonbi.ac.ke';input.dispatchEvent(new Event('input',{bubbles:true}));});
+ expect(errors).toEqual([]);
+ expect(await page.locator('#login-email').evaluate(e=>e.closest('.school-input').querySelector(':scope > span:not(.m3e-text-field)').hidden)).toBe(true);
 });
