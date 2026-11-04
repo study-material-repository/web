@@ -224,6 +224,7 @@
           title: args[1],
           note: args[2],
           task_type: args[3] || 'other',
+          tags: args[4] || [],
         },
       ],
       voteCommunityTask: [
@@ -1912,28 +1913,160 @@
   const tagFilters = document.createElement('div');
   tagFilters.className = 'task-tag-filters';
   tagFilters.innerHTML =
-    '<h3>Find tasks you can do</h3><p>Filter by year, semester or task type. Choose All tags to explore everything.</p><label>Task tag<select id="task-tag"><option value="">All tags</option></select></label><details><summary>Advanced filters</summary><label>Minimum reward<input id="task-min-reward" type="number" min="0" value="0"></label></details><button type="button" id="save-task-filters">Save my filters</button>';
+    '<label>Filter by tag<select id="task-tag"><option value="">All tags</option></select></label><details><summary>Advanced filters</summary><label>Minimum reward<input id="task-min-reward" type="number" min="0" value="0"></label><label>Maximum reward<input id="task-max-reward" type="number" min="0" placeholder="Any amount"></label><label><input id="task-my-year" type="checkbox" checked>My academic year and general tasks</label></details><button type="button" id="save-task-filters">Save my filters</button>';
   taskTools.after(tagFilters);
   const tagSelect = tagFilters.querySelector('select');
-  tagSelect.onchange = filterTasks;
-  tagFilters.querySelector('input').oninput = filterTasks;
-  tagFilters.querySelector('button').onclick = () => {
-    localStorage.setItem('smr-task-tag', tagSelect.value);
-    showToast('Task filter saved on this device.');
-  };
-  function taskTags(task) {
-    const tags = new Set([String(task.task_type || 'general').replaceAll('_', '-')]);
-    const text = [task.target_path, task.title, task.note].join(' ');
-    for (const m of text.matchAll(/#([a-z0-9.-]+)/gi)) tags.add(m[1].toLowerCase());
-    const semester = text.match(/\b([1-4])\.([12])\b/);
-    if (semester) {
-      tags.add(semester[0]);
-      tags.add('year-' + semester[1]);
+  let savedTaskFilters = {};
+  try {
+    savedTaskFilters = JSON.parse(localStorage.getItem('smr-task-filters') || '{}');
+  } catch (_) {}
+  const minimumReward = tagFilters.querySelector('#task-min-reward');
+  const maximumReward = tagFilters.querySelector('#task-max-reward');
+  const myYearOnly = tagFilters.querySelector('#task-my-year');
+  minimumReward.value = savedTaskFilters.minimum || 0;
+  maximumReward.value = savedTaskFilters.maximum || '';
+  myYearOnly.checked = savedTaskFilters.myYear !== false;
+  const selectedTaskTags = new Set(
+    savedTaskFilters.tags || (savedTaskFilters.tag ? [savedTaskFilters.tag] : []),
+  );
+  const selectedTagsBar = document.createElement('div');
+  selectedTagsBar.className = 'task-tags';
+  selectedTagsBar.setAttribute('aria-label', 'Selected task filters');
+  tagFilters.after(selectedTagsBar);
+  function renderSelectedTags() {
+    selectedTagsBar.replaceChildren();
+    selectedTagsBar.hidden = !selectedTaskTags.size;
+    for (const tag of selectedTaskTags) {
+      const chip = actionButton('#' + tag + ' ×', () => {
+        selectedTaskTags.delete(tag);
+        renderSelectedTags();
+        filterTasks();
+      });
+      chip.setAttribute('aria-label', 'Remove filter ' + tag);
+      selectedTagsBar.append(chip);
     }
-    const year = text.match(/year\s*([1-4])/i);
-    if (year) tags.add('year-' + year[1]);
-    if (!semester && !year) tags.add('general');
-    return [...tags];
+  }
+  renderSelectedTags();
+  tagSelect.onchange = () => {
+    if (tagSelect.value) selectedTaskTags.add(tagSelect.value);
+    else selectedTaskTags.clear();
+    tagSelect.value = '';
+    renderSelectedTags();
+    filterTasks();
+  };
+  tagFilters
+    .querySelectorAll('input')
+    .forEach((input) => input.addEventListener('input', filterTasks));
+  tagFilters.querySelector('button').onclick = () => {
+    localStorage.setItem(
+      'smr-task-filters',
+      JSON.stringify({
+        tags: [...selectedTaskTags],
+        minimum: minimumReward.value,
+        maximum: maximumReward.value,
+        myYear: myYearOnly.checked,
+      }),
+    );
+    showToast('Task filters saved on this device.');
+  };
+  const advancedSearch = document.createElement('dialog');
+  advancedSearch.className = 'account-dialog task-advanced-search';
+  advancedSearch.setAttribute('aria-label', 'Advanced task search');
+  const advancedHeader = document.createElement('div');
+  advancedHeader.className = 'dialog-header';
+  const advancedTitle = document.createElement('h2');
+  advancedTitle.textContent = 'Advanced search';
+  const closeAdvanced = actionButton('', () => advancedSearch.close());
+  closeAdvanced.className = 'icon-button';
+  closeAdvanced.setAttribute('aria-label', 'Close advanced search');
+  closeAdvanced.innerHTML =
+    '<span class="material-symbols-outlined" aria-hidden="true">close</span>';
+  advancedHeader.append(advancedTitle, closeAdvanced);
+  const advancedSource = tagFilters.querySelector('details');
+  const advancedFields = document.createElement('div');
+  advancedFields.className = 'task-advanced-fields';
+  advancedFields.append(
+    ...[...advancedSource.children].filter((child) => child.tagName !== 'SUMMARY'),
+  );
+  advancedSource.remove();
+  const applyAdvanced = actionButton('Show tasks', () => {
+    filterTasks();
+    advancedSearch.close();
+  });
+  const advancedActions = document.createElement('div');
+  advancedActions.className = 'task-actions';
+  advancedActions.append(tagFilters.querySelector('#save-task-filters'), applyAdvanced);
+  advancedSearch.append(advancedHeader, advancedFields, advancedActions);
+  document.body.append(advancedSearch);
+  const advancedToggle = actionButton('', () => window.SMRMaterial.open(advancedSearch));
+  advancedToggle.className = 'icon-button task-search-options';
+  advancedToggle.setAttribute('aria-label', 'Advanced task search');
+  advancedToggle.innerHTML =
+    '<span class="material-symbols-outlined" aria-hidden="true">tune</span>';
+  taskTools.querySelector('.task-search').append(advancedToggle);
+  function matchesAcademicYear(tags) {
+    const year = Number(state.member?.academic_year);
+    if (!myYearOnly.checked || !year || selectedTaskTags.size) return true;
+    const academic = tags.filter((tag) => /^(?:year-[1-6]|[1-6]\.[12])$/.test(tag));
+    return (
+      !academic.length ||
+      tags.includes('general') ||
+      academic.some((tag) => tag === 'year-' + year || tag.startsWith(year + '.'))
+    );
+  }
+  let customTaskTags = [];
+  function manageTaskTags() {
+    const modal = document.createElement('dialog');
+    modal.className = 'account-dialog';
+    modal.setAttribute('aria-label', 'Manage task tags');
+    const form = document.createElement('form');
+    const heading = document.createElement('h2');
+    heading.textContent = 'Manage task tags';
+    const label = document.createElement('label');
+    label.textContent = 'Available tags (comma separated)';
+    const input = document.createElement('textarea');
+    input.value = customTaskTags.join(', ');
+    input.placeholder = 'year-2, 2.1, csc201, proofreading';
+    label.append(input);
+    const hint = document.createElement('p');
+    hint.textContent =
+      'These become available in filters. Changing this list does not change tags on existing tasks.';
+    const message = document.createElement('p');
+    message.setAttribute('role', 'status');
+    const actions = document.createElement('div');
+    actions.className = 'task-actions';
+    const cancel = actionButton('Cancel', () => modal.close());
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.textContent = 'Save tags';
+    actions.append(cancel, save);
+    form.append(heading, label, hint, actions, message);
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      save.disabled = true;
+      try {
+        await callServer('adminEditTask', {
+          operation: 'tag_catalog',
+          tags: input.value
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+        });
+        await loadCommunityTasks();
+        modal.close();
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        save.disabled = false;
+      }
+    };
+    modal.append(form);
+    document.body.append(modal);
+    modal.onclose = () => modal.remove();
+    window.SMRMaterial.open(modal);
+  }
+  function taskTags(task) {
+    return Array.isArray(task.tags) ? task.tags : [];
   }
   function filterTasks() {
     let count = 0;
@@ -1941,8 +2074,12 @@
       card.hidden =
         (card.dataset.status === 'completed') !== (taskFilter === 'completed') ||
         !card.dataset.search.includes(taskQuery) ||
-        (tagSelect.value && !JSON.parse(card.dataset.tags || '[]').includes(tagSelect.value)) ||
-        Number(card.dataset.reward || 0) < Number(tagFilters.querySelector('input').value || 0);
+        !matchesAcademicYear(JSON.parse(card.dataset.tags || '[]')) ||
+        (selectedTaskTags.size > 0 &&
+          !JSON.parse(card.dataset.tags || '[]').some((tag) => selectedTaskTags.has(tag))) ||
+        Number(card.dataset.reward || 0) < Number(minimumReward.value || 0) ||
+        (maximumReward.value !== '' &&
+          Number(card.dataset.reward || 0) > Number(maximumReward.value));
       if (!card.hidden) count++;
     });
     taskTools.querySelector('.task-count').textContent = count + (count === 1 ? ' task' : ' tasks');
@@ -1971,6 +2108,14 @@
     taskQuery = event.target.value.trim().toLowerCase();
     filterTasks();
   });
+  setInterval(() => {
+    document.querySelectorAll('.task-age[data-created]').forEach((age) => {
+      const days = Math.max(0, Math.floor((Date.now() - new Date(age.dataset.created)) / 86400000));
+      age.textContent = days
+        ? 'Created ' + days + ' day' + (days === 1 ? '' : 's') + ' ago'
+        : 'Created today';
+    });
+  }, 60000);
   function taskNote(text) {
     const paragraph = document.createElement('p');
     paragraph.className = 'task-description';
@@ -1999,17 +2144,34 @@
         rememberMember(account.member || null);
       }
       const result = await callServer('communityTasks');
+      if (state.member?.is_admin && !document.querySelector('#admin-create-task')) {
+        const create = actionButton('Create task', () =>
+          editTask({ title: '', note: '', status: 'open', tags: [], priority: 5 }),
+        );
+        create.id = 'admin-create-task';
+        taskTools.prepend(create);
+        const manageTags = actionButton('Manage tags', manageTaskTags);
+        tagFilters.append(manageTags);
+      }
       status.textContent = result.tasks.length
         ? ''
         : 'No tasks yet. Propose something useful for the class.';
-      const availableTags = [...new Set(result.tasks.flatMap(taskTags))].sort();
-      const previous = tagSelect.value || localStorage.getItem('smr-task-tag') || '';
+      const proposalTypes = document.querySelector('#task-type');
+      for (const type of new Set(result.tasks.map((task) => task.task_type).filter(Boolean))) {
+        if (![...proposalTypes.options].some((option) => option.value === type))
+          proposalTypes.add(new Option(type.replace(/[_-]/g, ' '), type));
+      }
+      customTaskTags = result.tags || [];
+      const availableTags = [
+        ...new Set([...customTaskTags, ...result.tasks.flatMap(taskTags)]),
+      ].sort();
+
       tagSelect.replaceChildren(
         new Option('All tags', ''),
         ...availableTags.map((tag) => new Option('#' + tag, tag)),
       );
-      tagSelect.value = availableTags.includes(previous) ? previous : '';
-      for (const task of result.tasks) {
+      tagSelect.value = '';
+      for (const task of result.tasks.sort((a, b) => (b.priority || 0) - (a.priority || 0))) {
         const card = document.createElement('details');
         card.className = 'community-task task-row';
         card.dataset.status = task.status;
@@ -2054,6 +2216,16 @@
                 : 'Proposal'
               : coins(task.reward_coins) + ' coins funded';
         summary.append(marker, title, badge);
+        if (task.created_at) {
+          const age = document.createElement('small');
+          age.className = 'task-age';
+          age.dataset.created = task.created_at;
+          const days = Math.max(0, Math.floor((Date.now() - new Date(task.created_at)) / 86400000));
+          age.textContent = days
+            ? 'Created ' + days + ' day' + (days === 1 ? '' : 's') + ' ago'
+            : 'Created today';
+          summary.append(age);
+        }
         card.append(summary);
         const contents = document.createElement('div');
         contents.className = 'task-row-details';
@@ -2064,15 +2236,22 @@
           chip.type = 'button';
           chip.textContent = '#' + tag;
           chip.onclick = () => {
-            tagSelect.value = tag;
+            selectedTaskTags.add(tag);
+            renderSelectedTags();
             filterTasks();
           };
           tags.append(chip);
         }
         contents.append(tags, path, note);
         card.append(contents);
-        if (state.member?.is_admin)
+        if (state.member?.is_admin) {
           contents.append(actionButton('Edit task', () => editTask(task)));
+          if (task.status !== 'completed')
+            contents.append(
+              actionButton('Mark complete', () => changeTaskStatus(task, 'completed')),
+            );
+          contents.append(actionButton('Delete task', () => changeTaskStatus(task, 'deleted')));
+        }
         if (task.status === 'proposed' && task.source_label) {
           if (state.member?.is_admin) {
             const activate = actionButton('Activate with treasury funds', async () => {
@@ -2142,6 +2321,12 @@
               );
           }
         }
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+        for (const button of [...contents.children].filter((el) => el.tagName === 'BUTTON'))
+          actions.append(button);
+        if (actions.childNodes.length) contents.append(actions);
+        if (!tags.childNodes.length) tags.hidden = true;
         list.append(card);
       }
       filterTasks();
@@ -2194,6 +2379,14 @@
         document.querySelector('#task-name').value,
         document.querySelector('#task-note').value,
         document.querySelector('#task-type').value,
+        [
+          document.querySelector('#task-semester').value,
+          ...document
+            .querySelector('#task-proposal-tags')
+            .value.split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+        ],
       );
       taskDialog.close();
       showView('contribute');
@@ -2258,9 +2451,43 @@
     document.dispatchEvent(new CustomEvent('smr-view', { detail: { view } }));
     if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
   }
+  async function changeTaskStatus(task, status) {
+    if (
+      !(await confirmSubmission(
+        status === 'deleted' ? 'Delete this task?' : 'Mark this task complete?',
+        task.title + ' — unused reward funds will be returned.',
+      ))
+    )
+      return;
+    try {
+      await callServer('adminEditTask', {
+        task_id: task.id,
+        title: task.title,
+        note: task.note || '',
+        reward_coins: task.historical_reward_coins || task.reward_coins || 0,
+        status,
+        request_id: crypto.randomUUID(),
+      });
+      invalidateViews();
+      await loadCommunityTasks();
+    } catch (error) {
+      showToast(error.message);
+    }
+  }
   function editTask(task) {
     const modal = document.createElement('dialog');
     modal.className = 'account-dialog';
+    const heading = document.createElement('h2');
+    heading.textContent = task.id ? 'Edit task' : 'Create treasury-funded task';
+    modal.setAttribute('aria-label', heading.textContent);
+    const header = document.createElement('div');
+    header.className = 'dialog-header';
+    const close = actionButton('', () => modal.close());
+    close.className = 'icon-button';
+    close.setAttribute('aria-label', 'Close');
+    close.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">close</span>';
+    header.append(heading, close);
+    modal.append(header);
     const form = document.createElement('form');
     const title = document.createElement('input'),
       note = document.createElement('textarea'),
@@ -2273,16 +2500,30 @@
     reward.min = '0';
     reward.step = '0.001';
     reward.value = task.historical_reward_coins || task.reward_coins || 0;
-    for (const value of ['proposed', 'open', 'completed']) {
+    for (const value of ['proposed', 'open', 'completed', 'deleted']) {
       const option = new Option(value, value);
       status.append(option);
     }
     status.value = task.status;
+    const taskType = document.createElement('input');
+    taskType.value = task.task_type || 'other';
+    const tags = document.createElement('input');
+    tags.value = (task.tags || []).join(', ');
+    tags.placeholder = 'e.g. year-2, 2.1, csc201';
+    const priority = document.createElement('input');
+    priority.type = 'number';
+    priority.min = '0';
+    priority.max = '10';
+    priority.step = '1';
+    priority.value = task.priority || 0;
     for (const [label, input] of [
       ['Title', title],
       ['Description', note],
       ['Treasury reward', reward],
       ['Status', status],
+      ['Task type', taskType],
+      ['Tags (comma separated)', tags],
+      ['Priority (0–10)', priority],
     ]) {
       const field = document.createElement('label');
       field.textContent = label;
@@ -2299,13 +2540,27 @@
     save.className = 'tonal-button';
     const cancel = actionButton('Cancel', () => modal.close());
     cancel.type = 'button';
-    form.append(save, cancel);
+    const actions = document.createElement('div');
+    actions.className = 'task-actions';
+    actions.append(cancel, save);
+    form.append(actions);
     const message = document.createElement('p');
     form.append(message);
     const request_id = crypto.randomUUID();
     form.onsubmit = async (event) => {
       event.preventDefault();
+      if (save.disabled) return;
       save.disabled = true;
+      if (
+        ['deleted', 'completed'].includes(status.value) &&
+        !(await confirmSubmission(
+          status.value === 'deleted' ? 'Delete this task?' : 'Mark this task complete?',
+          title.value + ' — unused reward funds will be returned.',
+        ))
+      ) {
+        save.disabled = false;
+        return;
+      }
       busy(message);
       try {
         await callServer('adminEditTask', {
@@ -2314,6 +2569,12 @@
           note: note.value,
           reward_coins: reward.value,
           status: status.value,
+          task_type: taskType.value,
+          tags: tags.value
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean),
+          priority: Number(priority.value),
           request_id,
         });
         invalidateViews();
@@ -2554,6 +2815,12 @@
               },
             ),
           );
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+        for (const button of [...contents.children].filter((el) => el.tagName === 'BUTTON'))
+          actions.append(button);
+        if (actions.childNodes.length) contents.append(actions);
+        if (!tags.childNodes.length) tags.hidden = true;
         list.append(card);
       });
       data.mine.forEach((item) => {
@@ -2647,6 +2914,12 @@
             await loadCoinflips();
           }),
         );
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+        for (const button of [...contents.children].filter((el) => el.tagName === 'BUTTON'))
+          actions.append(button);
+        if (actions.childNodes.length) contents.append(actions);
+        if (!tags.childNodes.length) tags.hidden = true;
         list.append(card);
       });
       (data.mine_open || []).forEach((flip) => {
@@ -2668,6 +2941,12 @@
             await loadCoinflips();
           }),
         );
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+        for (const button of [...contents.children].filter((el) => el.tagName === 'BUTTON'))
+          actions.append(button);
+        if (actions.childNodes.length) contents.append(actions);
+        if (!tags.childNodes.length) tags.hidden = true;
         list.append(card);
       });
       data.recent.forEach((flip) => {
@@ -2833,6 +3112,12 @@
         amount.className = 'history-amount';
         amount.textContent = item.coins == null ? '—' : coins(item.coins) + ' 🪙';
         card.append(title, detail, amount);
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+        for (const button of [...contents.children].filter((el) => el.tagName === 'BUTTON'))
+          actions.append(button);
+        if (actions.childNodes.length) contents.append(actions);
+        if (!tags.childNodes.length) tags.hidden = true;
         list.append(card);
       });
       status.textContent = list.children.length ? '' : 'No file requests recorded yet.';

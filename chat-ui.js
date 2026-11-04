@@ -270,15 +270,15 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
           select({ kind, id: item.id }),
         );
         if (kind === 'space') b.prepend(spaceIcon(item.label));
-        if (kind === 'dm' && window.smrAvatar) {
-          const portrait = smrAvatar(item.avatar_seed || item.label).cloneNode(true);
-          portrait.removeAttribute('tabindex');
-          portrait.removeAttribute('role');
-          portrait.setAttribute('aria-hidden', 'true');
-          b.prepend(portrait);
-        }
         if (selected?.id === item.id) b.setAttribute('aria-current', 'true');
-        list.append(b);
+        if (kind === 'dm' && window.smrAvatar) {
+          const contact = document.createElement('div');
+          contact.className = 'chat-contact';
+          const portrait = smrAvatar(item.avatar_seed || item.label);
+          portrait.setAttribute('aria-label', 'Enlarge ' + item.label + ' avatar');
+          contact.append(portrait, b);
+          list.append(contact);
+        } else list.append(b);
       });
       if (!items.length) {
         const p = document.createElement('p');

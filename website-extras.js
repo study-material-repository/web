@@ -561,6 +561,38 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
     change.textContent = 'Edit avatar';
     change.onclick = editAvatar;
     portrait.append(change);
+    const rename = document.createElement('button');
+    rename.textContent = 'Change username';
+    rename.onclick = () => {
+      const modal = document.createElement('dialog');
+      modal.className = 'account-dialog';
+      modal.setAttribute('aria-label', 'Change username');
+      modal.innerHTML =
+        '<form><div class="dialog-header"><h2>Change username</h2><button type="button" class="icon-button" aria-label="Close"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div><label>Display name<input name="username" required minlength="2" maxlength="30" autocomplete="nickname"></label><p>This is how your name appears in chat. Your sign-in email stays the same.</p><button type="submit">Save username</button><p role="status"></p></form>';
+      modal.querySelector('input').value = data.username || '';
+      modal.querySelector('button[type="button"]').onclick = () => modal.close();
+      modal.querySelector('form').onsubmit = async (event) => {
+        event.preventDefault();
+        const save = modal.querySelector('button[type="submit"]');
+        save.disabled = true;
+        try {
+          data = await callServer('websiteData', {
+            operation: 'username',
+            name: modal.querySelector('input').value,
+          });
+          render();
+          modal.close();
+        } catch (error) {
+          modal.querySelector('[role="status"]').textContent = error.message;
+        } finally {
+          save.disabled = false;
+        }
+      };
+      document.body.append(modal);
+      modal.onclose = () => modal.remove();
+      window.SMRMaterial.open(modal);
+    };
+    portrait.append(rename);
     summary.append(portrait);
     const grid = document.createElement('dl');
     grid.className = 'stats-grid';
@@ -613,10 +645,12 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
       close.setAttribute('aria-label', 'Close');
       close.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">close</span>';
       close.onclick = () => admin.close();
-      admin.append(close);
       const title = document.createElement('h1');
       title.textContent = 'Repository dashboard';
-      admin.append(title);
+      const header = document.createElement('div');
+      header.className = 'dialog-header';
+      header.append(title, close);
+      admin.append(header);
       const p = document.createElement('p');
       p.textContent = `${data.admin.members} members · ${data.admin.active_7_days} active in 7 days · ${data.admin.visits} visits · ${data.admin.messages} messages`;
       const cards = document.createElement('dl');

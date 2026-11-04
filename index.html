@@ -509,6 +509,24 @@
             required
           ></textarea>
         </label>
+        <label
+          >Semester<select id="task-semester">
+            <option value="general">General — any year</option>
+            <option value="1.1">Year 1 · Semester 1 (#1.1)</option>
+            <option value="1.2">Year 1 · Semester 2 (#1.2)</option>
+            <option value="2.1">Year 2 · Semester 1 (#2.1)</option>
+            <option value="2.2">Year 2 · Semester 2 (#2.2)</option>
+            <option value="3.1">Year 3 · Semester 1 (#3.1)</option>
+            <option value="3.2">Year 3 · Semester 2 (#3.2)</option>
+            <option value="4.1">Year 4 · Semester 1 (#4.1)</option>
+            <option value="4.2">Year 4 · Semester 2 (#4.2)</option>
+          </select></label
+        ><label
+          >Unit or other tags<input
+            id="task-proposal-tags"
+            placeholder="e.g. csc201, proofreading"
+            maxlength="400"
+        /></label>
         <button class="tonal-button" type="submit">Propose task</button>
       </form>
       <p id="task-status" role="status" aria-live="polite"></p>

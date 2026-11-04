@@ -71,3 +71,32 @@ test('message appears before the send request finishes',async({page})=>{
  await page.locator('#message-body').fill('Optimistic send check');await page.locator('#message-compose').evaluate(form=>form.requestSubmit());
  try {await expect(page.locator('.pending-message')).toContainText('Optimistic send check');await expect(page.locator('#message-body')).toHaveValue('');await expect(page.locator('#page-progress')).toBeHidden();}finally{release();}
 });
+
+test('admin task controls and advanced reward filters remain usable',async({page})=>{
+ await page.goto('http://127.0.0.1:4188/#contribute');
+ await page.getByRole('button',{name:'Create task',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Create treasury-funded task'});
+ await expect(dialog).toBeVisible();
+ await dialog.getByLabel('Title',{exact:true}).fill('Prepare worked examples');
+ await dialog.getByLabel('Priority (0–10)',{exact:true}).fill('11');
+ expect(await dialog.getByLabel('Priority (0–10)',{exact:true}).evaluate(e=>e.checkValidity())).toBe(false);
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ await dialog.getByRole('button',{name:'Close',exact:true}).click();
+ await page.getByRole('button',{name:'Advanced task search',exact:true}).click();
+ await page.locator('#task-min-reward').fill('1');
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ await page.screenshot({path:test.info().outputPath('advanced-search.png')});
+ await expect(page.locator('.task-row').filter({hasText:'Organise past papers'})).toBeHidden();
+ await expect(page.locator('.task-row').filter({hasText:'Add worked examples'})).toBeVisible();
+ await page.getByRole('button',{name:'Save my filters',exact:true}).click();
+ await page.reload();await expect(page.locator('#task-min-reward')).toHaveValue('1');
+});
+
+test('chat tools do not resize the message bubble',async({page})=>{
+ await page.goto('http://127.0.0.1:4188/#chat');
+ await expect(page.locator('.chat-bubble').first()).toBeVisible();
+ const bubble=page.locator('.chat-bubble').first();
+ await expect(bubble).toBeVisible();const before=await bubble.boundingBox();
+ await bubble.focus();const after=await bubble.boundingBox();
+ expect(after.height).toBe(before.height);expect(after.width).toBe(before.width);
+});
