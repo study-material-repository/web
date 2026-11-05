@@ -49,3 +49,10 @@ Joe authorized publication on 4 November 2026. Preview: http://localhost:4190/#c
 - Wider task editor, dropdowns that fit short lists, consistent Google Sans, green topic accents and warm reward badges.
 - Transfer email means coin-transfer notifications, not changes to delivery addresses. Google OAuth remains pending a public Web client ID.
 - Release checks: all 26 Chromium desktop/mobile interactions and accessibility checks passed; Contribute screenshot changes reviewed. Core deployed as version 61, gateway healthy.
+
+## Review recovery — 5 November 2026
+- Fixed out-of-scope task-card variables in populated review cards, request history and coinflip lists. Empty-data tests had hidden this regression.
+- Drive staging behavior remains intact: prepareReviewAsset_ copies a shared Drive file into SMR_REVIEW_FOLDER_ID; publishReviewedContribution_ moves that same reviewed copy into the selected catalogue folder only after approval.
+- Added contribution-review.test.cjs under vps/gateway/ledger to verify staging, duplicate submissions, rejection, independent/admin approvals and retry behavior without touching real submissions.
+- Four new desktop/mobile checks passed for populated reviews (including opening the staged copy and approving) and request history. Review screenshots inspected; accessibility checks clear.
+- Added a short explanation of review-folder handling to the contribution form. No backend deployment or changes to actual pending submissions were needed.

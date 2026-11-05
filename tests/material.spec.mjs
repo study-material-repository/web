@@ -134,3 +134,36 @@ test('catalogue menus are compact icon rows and email entry does not throw',asyn
  expect(errors).toEqual([]);
  expect(await page.locator('#login-email').evaluate(e=>e.closest('.school-input').querySelector(':scope > span:not(.m3e-text-field)').hidden)).toBe(true);
 });
+
+test('populated review queue opens the staged copy and records approval',async({page})=>{
+ let approved=false;const calls=[];
+ await page.route('**/api',async route=>{
+  const {action,payload}=route.request().postDataJSON();
+  if(action==='community_review_queue')return route.fulfill({json:{ok:true,data:{academic_year:2,is_admin:true,mine:[{id:'own',title:'My pending notes',status:'pending',source_url:'https://drive.google.com/file/d/source/view'}],items:approved?[]:[{id:'review-one',title:'Revision notes',path:'Year 2 / 2.1 / Notes',note:'Check the worked examples.',my_decision:''}]}}});
+  if(action==='review_contribution'){calls.push(payload);if(payload.decision==='approve')approved=true;return route.fulfill({json:{ok:true,data:payload.decision==='open'?{url:'https://drive.google.com/open?id=staged-copy'}:{status:'approved'}}});}
+  return route.fallback();
+ });
+ await page.context().route('https://drive.google.com/**',route=>route.fulfill({contentType:'text/html',body:'<title>Review copy</title>'}));
+ await page.goto('http://127.0.0.1:4188/#contribute');
+ const card=page.locator('#review-list article');await expect(card).toContainText('Revision notes');
+ await expect(page.locator('#review-status')).not.toContainText('defined');
+ await expect(page.locator('#submission-list')).toContainText('My pending notes');
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ await page.screenshot({path:test.info().outputPath('populated-review.png'),fullPage:true});
+ const opened=page.waitForEvent('popup');await card.getByRole('button',{name:'Open material',exact:true}).click();
+ const popup=await opened;await expect(popup).toHaveURL('https://drive.google.com/open?id=staged-copy');await popup.close();
+ await card.getByLabel('Published file name').fill('Approved notes.pdf');
+ await card.getByRole('button',{name:'Approve',exact:true}).click();
+ await expect(page.locator('#review-list')).toContainText('No matching submissions');
+ expect(calls.map(c=>c.decision)).toEqual(['open','approve']);expect(calls[1].proposed_title).toBe('Approved notes.pdf');
+});
+
+test('populated file history renders without task-card variables',async({page})=>{
+ await page.route('**/api',async route=>{
+  if(route.request().postDataJSON().action!=='member_request_history')return route.fallback();
+  return route.fulfill({json:{ok:true,data:{items:[{file:'Revision paper.pdf',file_id:'paper',date:'2026-11-04T12:00:00Z',status:'completed',coins:1}],next_cursor:null}}});
+ });
+ await page.goto('http://127.0.0.1:4188/#activity');
+ await expect(page.locator('#history-list')).toContainText('Revision paper.pdf');
+ await expect(page.locator('#history-status')).not.toContainText('defined');
+});

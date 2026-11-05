@@ -2853,10 +2853,9 @@
           );
         const actions = document.createElement('div');
         actions.className = 'task-actions';
-        for (const button of [...contents.children].filter((el) => el.tagName === 'BUTTON'))
+        for (const button of [...card.children].filter((el) => el.tagName === 'BUTTON'))
           actions.append(button);
-        if (actions.childNodes.length) contents.append(actions);
-        if (!tags.childNodes.length) tags.hidden = true;
+        if (actions.childNodes.length) card.append(actions);
         list.append(card);
       });
       data.mine.forEach((item) => {
@@ -2952,10 +2951,9 @@
         );
         const actions = document.createElement('div');
         actions.className = 'task-actions';
-        for (const button of [...contents.children].filter((el) => el.tagName === 'BUTTON'))
+        for (const button of [...card.children].filter((el) => el.tagName === 'BUTTON'))
           actions.append(button);
-        if (actions.childNodes.length) contents.append(actions);
-        if (!tags.childNodes.length) tags.hidden = true;
+        if (actions.childNodes.length) card.append(actions);
         list.append(card);
       });
       (data.mine_open || []).forEach((flip) => {
@@ -2979,10 +2977,9 @@
         );
         const actions = document.createElement('div');
         actions.className = 'task-actions';
-        for (const button of [...contents.children].filter((el) => el.tagName === 'BUTTON'))
+        for (const button of [...card.children].filter((el) => el.tagName === 'BUTTON'))
           actions.append(button);
-        if (actions.childNodes.length) contents.append(actions);
-        if (!tags.childNodes.length) tags.hidden = true;
+        if (actions.childNodes.length) card.append(actions);
         list.append(card);
       });
       data.recent.forEach((flip) => {
@@ -3150,10 +3147,9 @@
         card.append(title, detail, amount);
         const actions = document.createElement('div');
         actions.className = 'task-actions';
-        for (const button of [...contents.children].filter((el) => el.tagName === 'BUTTON'))
+        for (const button of [...card.children].filter((el) => el.tagName === 'BUTTON'))
           actions.append(button);
-        if (actions.childNodes.length) contents.append(actions);
-        if (!tags.childNodes.length) tags.hidden = true;
+        if (actions.childNodes.length) card.append(actions);
         list.append(card);
       });
       status.textContent = list.children.length ? '' : 'No file requests recorded yet.';
