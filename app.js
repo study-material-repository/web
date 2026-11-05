@@ -107,6 +107,7 @@
         [
           'submitCatalogueContribution',
           'reviewContribution',
+          'manageContribution',
           'setCommunityYear',
           'taskClaim',
           'fundCommunityTask',
@@ -241,6 +242,7 @@
           withdraw: args[3] === true,
         },
       ],
+      manageContribution: ['manage_contribution', { session_token: state.token, ...args[0] }],
       communityReviewQueue: ['community_review_queue', { session_token: state.token }],
       setCommunityYear: ['set_community_year', { session_token: state.token, year: args[0] }],
       reviewContribution: [
@@ -1713,7 +1715,7 @@
     }
   });
 
-  function confirmSubmission(title, description) {
+  function confirmSubmission(title, description, confirmLabel = 'Confirm submission') {
     return new Promise((resolve) => {
       const dialog = document.createElement('dialog');
       dialog.className = 'account-dialog delete-dialog';
@@ -1729,7 +1731,7 @@
       cancel.textContent = 'Review';
       const submit = document.createElement('button');
       submit.className = 'tonal-button';
-      submit.textContent = 'Confirm submission';
+      submit.textContent = confirmLabel;
       cancel.onclick = () => dialog.close();
       submit.onclick = () => {
         accepted = true;
@@ -2144,7 +2146,14 @@
       });
     return paragraph;
   }
+  let taskGeneration = 0;
   async function loadCommunityTasks() {
+    const generation = ++taskGeneration;
+    const expanded = new Set(
+      [...document.querySelectorAll('#community-list details[open]')].map(
+        (el) => el.dataset.taskId,
+      ),
+    );
     const status = document.querySelector('#community-status');
     const list = document.querySelector('#community-list');
     busy(status);
@@ -2155,6 +2164,8 @@
         rememberMember(account.member || null);
       }
       const result = await callServer('communityTasks');
+      if (generation !== taskGeneration) return;
+      list.replaceChildren();
       if (state.member?.is_admin && !document.querySelector('#admin-create-task')) {
         const create = actionButton('Create task', () =>
           editTask({ title: '', note: '', status: 'open', tags: [], priority: 5 }),
@@ -2185,6 +2196,8 @@
       for (const task of result.tasks.sort((a, b) => (b.priority || 0) - (a.priority || 0))) {
         const card = document.createElement('details');
         card.className = 'community-task task-row';
+        card.dataset.taskId = task.id;
+        card.open = expanded.has(String(task.id));
         card.dataset.status = task.status;
         card.dataset.tags = JSON.stringify(taskTags(task));
         card.dataset.reward = task.reward_coins || 0;
@@ -2226,6 +2239,12 @@
                 ? coins(task.historical_reward_coins) + ' coins · Awaiting activation'
                 : 'Proposal'
               : coins(task.reward_coins) + ' coins funded';
+        if (task.claim)
+          badge.textContent =
+            (task.claim.mine ? 'Claimed by you' : 'Claimed by another contributor') +
+            (task.claim.submitted ? ' · In review' : '') +
+            ' · ' +
+            badge.textContent;
         summary.append(marker, title, badge);
         if (task.created_at) {
           const age = document.createElement('small');
@@ -2301,6 +2320,11 @@
             const claimAction = async (operation) => {
               try {
                 await callServer('taskClaim', { task_id: task.id, operation });
+                showToast(
+                  operation === 'claim'
+                    ? 'Task claimed for seven days. You can hold up to two claims.'
+                    : 'Claim released.',
+                );
                 await loadCommunityTasks();
               } catch (error) {
                 showToast(error.message);
@@ -2758,7 +2782,9 @@
       button.disabled = false;
     }
   };
+  let reviewGeneration = 0;
   async function loadReviews() {
+    const generation = ++reviewGeneration;
     const status = document.querySelector('#review-status');
     const list = document.querySelector('#review-list');
     const mine = document.querySelector('#submission-list');
@@ -2771,6 +2797,9 @@
     busy(status);
     try {
       const data = await callServer('communityReviewQueue');
+      if (generation !== reviewGeneration) return;
+      list.replaceChildren();
+      mine.replaceChildren();
       document.querySelector('#year-form').hidden = false;
       if (data.academic_year)
         document.querySelector('#review-year').value = String(data.academic_year);
@@ -2804,14 +2833,21 @@
             item.my_decision +
             '. Waiting for the community; retry your recorded decision if publication was interrupted.';
         const explanation = document.createElement('textarea');
-        explanation.placeholder = 'What needs fixing? Required when rejecting.';
+        explanation.placeholder = 'Describe the changes the contributor should make…';
+        explanation.addEventListener('input', () => explanation.setCustomValidity(''));
+        const nameLabel = document.createElement('label');
+        nameLabel.textContent = 'File name after approval';
+        nameLabel.append(publishedName);
+        const noteLabel = document.createElement('label');
+        noteLabel.textContent = 'Changes needed (required when requesting changes)';
+        noteLabel.append(explanation);
         explanation.maxLength = 1000;
         explanation.setAttribute('aria-label', 'Review note');
         card.classList.add('review-card');
         card.append(
           title,
           detail,
-          publishedName,
+          nameLabel,
           actionButton('Open material', async () => {
             const tab = window.open('about:blank', '_blank');
             if (tab) tab.opener = null;
@@ -2824,7 +2860,7 @@
               throw error;
             }
           }),
-          explanation,
+          noteLabel,
         );
         for (const decision of item.my_decision ? [item.my_decision] : ['approve', 'reject'])
           card.append(
@@ -2835,6 +2871,14 @@
                   ? 'Approve'
                   : 'Request changes',
               async () => {
+                if (decision === 'reject' && explanation.value.trim().length < 5) {
+                  explanation.setCustomValidity(
+                    'Describe what needs changing (at least five characters).',
+                  );
+                  explanation.reportValidity();
+                  explanation.focus();
+                  return;
+                }
                 const result = await callServer(
                   'reviewContribution',
                   item.id,
@@ -2890,12 +2934,92 @@
               await loadReviews();
             }),
           );
+        const controls = document.createElement('div');
+        controls.className = 'task-actions';
+        if (item.can_edit)
+          controls.append(actionButton('Edit submission', () => editSubmission(item)));
+        if (item.can_withdraw)
+          controls.append(
+            actionButton('Withdraw submission', async () => {
+              if (
+                !(await confirmSubmission(
+                  'Withdraw this submission?',
+                  'It will leave the review queue. You can submit it again later. Any associated task claim will be released.',
+                  'Withdraw submission',
+                ))
+              )
+                return;
+              await callServer('manageContribution', {
+                contribution_id: item.id,
+                operation: 'withdraw',
+              });
+              await Promise.all([loadReviews(), loadCommunityTasks()]);
+              showToast('Submission withdrawn.');
+            }),
+          );
+        row.append(controls);
         mine.append(row);
       });
       if (!data.mine.length) mine.textContent = 'Your submissions will appear here.';
     } catch (error) {
-      status.textContent = error.message;
+      if (generation === reviewGeneration) status.textContent = error.message;
     }
+  }
+  function editSubmission(item) {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'account-dialog';
+    const heading = document.createElement('h2');
+    heading.textContent = 'Edit submission';
+    const form = document.createElement('form');
+    const fields = {};
+    for (const [key, caption, value] of [
+      ['title', 'Title', item.title],
+      ['source_url', 'Material link', item.source_url],
+      ['note', 'Note for reviewers', item.note],
+    ]) {
+      const label = document.createElement('label');
+      label.textContent = caption;
+      const input = document.createElement(key === 'note' ? 'textarea' : 'input');
+      input.value = value || '';
+      input.required = key !== 'note';
+      if (key === 'source_url') input.type = 'url';
+      input.maxLength = key === 'title' ? 180 : key === 'note' ? 1000 : 2000;
+      label.append(input);
+      form.append(label);
+      fields[key] = input;
+    }
+    const actions = document.createElement('div');
+    actions.className = 'task-actions';
+    const cancel = actionButton('Cancel', () => dialog.close());
+    cancel.type = 'button';
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.textContent = 'Save changes';
+    actions.append(cancel, save);
+    form.append(actions);
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      if (save.disabled) return;
+      save.disabled = true;
+      try {
+        await callServer('manageContribution', {
+          contribution_id: item.id,
+          operation: 'edit',
+          ...Object.fromEntries(Object.entries(fields).map(([key, input]) => [key, input.value])),
+        });
+        dialog.close();
+        await loadReviews();
+        showToast('Submission updated.');
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        save.disabled = false;
+      }
+    };
+    dialog.append(heading, form);
+    document.body.append(dialog);
+    dialog.onclose = () => dialog.remove();
+    window.SMRMaterial.open(dialog);
   }
   document.querySelector('#year-form').onsubmit = async (event) => {
     event.preventDefault();

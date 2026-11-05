@@ -167,3 +167,73 @@ test('populated file history renders without task-card variables',async({page})=
  await expect(page.locator('#history-list')).toContainText('Revision paper.pdf');
  await expect(page.locator('#history-status')).not.toContainText('defined');
 });
+
+test('submission editing, withdrawal and clear review notes',async({page})=>{
+ let title='My pending notes',withdrawn=false;const calls=[];
+ await page.route('**/api',async route=>{
+  const {action,payload}=route.request().postDataJSON();
+  if(action==='community_review_queue')return route.fulfill({json:{ok:true,data:{academic_year:2,is_admin:true,mine:[{id:'mine',title,status:withdrawn?'withdrawn':'pending',source_url:'https://example.com/notes',can_edit:!withdrawn,can_withdraw:!withdrawn}],items:[{id:'other',title:'Review notes',path:'Year 2',note:''}]}}});
+  if(action==='manage_contribution'){calls.push(payload);if(payload.operation==='edit')title=payload.title;else withdrawn=true;return route.fulfill({json:{ok:true,data:{status:withdrawn?'withdrawn':'pending'}}});}
+  return route.fallback();
+ });
+ await page.goto('http://127.0.0.1:4188/#contribute');
+ await expect(page.locator('#review-list article')).toHaveCount(1);
+ await page.locator('#review-list').getByRole('button',{name:'Request changes',exact:true}).click();
+ await expect(page.getByLabel('Review note')).toBeFocused();
+ expect(await page.getByLabel('Review note').evaluate(e=>e.checkValidity())).toBe(false);
+ await page.getByRole('button',{name:'Edit submission',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Edit submission'});
+ await dialog.getByLabel('Title',{exact:true}).fill('Updated submission');
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ await page.screenshot({path:test.info().outputPath('edit-submission.png')});
+ await dialog.getByRole('button',{name:'Save changes',exact:true}).click();
+ await expect(page.locator('#submission-list')).toContainText('Updated submission');
+ await page.getByRole('button',{name:'Withdraw submission',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Withdraw submission',exact:true}).click();
+ await expect(page.locator('#submission-list')).toContainText('withdrawn');
+ await expect(page.locator('#review-list article')).toHaveCount(1);
+ expect(calls.map(c=>c.operation)).toEqual(['edit','withdraw']);
+});
+
+test('claimed task stays expanded and shows owner status in summary',async({page})=>{
+ let claim=null;
+ await page.route('**/api',async route=>{
+  const {action}=route.request().postDataJSON();
+  if(action==='community_tasks')return route.fulfill({json:{ok:true,data:{tasks:[{id:'claim-task',title:'Claim regression task',status:'open',reward_coins:5,votes:0,claim}]}}});
+  if(action==='task_claim'){claim={mine:true,expires:Date.now()+7*86400000,submitted:false};return route.fulfill({json:{ok:true,data:claim}});}
+  return route.fallback();
+ });
+ await page.goto('http://127.0.0.1:4188/#contribute');
+ const task=page.locator('.task-row');await task.locator('summary').click();
+ await task.getByRole('button',{name:'Claim task',exact:true}).click();
+ await expect(task.locator('summary')).toContainText('Claimed by you');
+ await expect(task).toHaveAttribute('open','');
+ await expect(task.getByRole('button',{name:'Release claim',exact:true})).toBeVisible();
+});
+
+test('notifications chat has no composer or message actions',async({page})=>{
+ await page.route('**/api',async route=>{
+  if(route.request().postDataJSON().action!=='chat_hub')return route.fallback();
+  return route.fulfill({json:{ok:true,data:{contacts:[],spaces:[{id:'smr-notifications',label:'Notifications',community:'Personal',unread:1}],thread:{id:'smr-notifications',kind:'space',label:'Notifications',can_send:false,can_manage:false,can_leave:false,read_only:true},messages:[{id:'approval',sender:'Notifications',body:'Your submission was approved and added to the repository.',created_at:'2026-11-05T12:00:00Z',mine:false,reactions:[]}]}}});
+ });
+ await page.goto('http://127.0.0.1:4188/#chat');
+ await expect(page.locator('.chat-bubble')).toContainText('approved');
+ await expect(page.locator('#message-compose')).toBeHidden();
+ await expect(page.getByRole('button',{name:'Reply',exact:true})).toHaveCount(0);
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ await page.screenshot({path:test.info().outputPath('notifications.png'),fullPage:true});
+});
+
+test('overlapping review refreshes render each submission only once',async({page})=>{
+ let release;const ready=new Promise(resolve=>release=resolve);let requests=0;
+ await page.route('**/api',async route=>{
+  if(route.request().postDataJSON().action!=='community_review_queue')return route.fallback();
+  requests++;await ready;await route.fulfill({json:{ok:true,data:{academic_year:2,is_admin:true,mine:[],items:[{id:'one-review',title:'One stored submission',path:'Year 2',note:''}]}}});
+ });
+ await page.goto('http://127.0.0.1:4188/#contribute');
+ await expect.poll(()=>requests).toBeGreaterThan(0);
+ await page.locator('#year-form').evaluate(form=>{form.querySelector('select').value='2';form.requestSubmit();});
+ await expect.poll(()=>requests).toBeGreaterThan(1);release();
+ await expect(page.locator('#review-list article')).toHaveCount(1);
+ await expect(page.locator('#review-list')).toContainText('One stored submission');
+});

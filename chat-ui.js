@@ -129,7 +129,12 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     icon.className = 'material-symbols-outlined';
     icon.setAttribute('aria-hidden', 'true');
     icon.textContent =
-      { Announcements: 'campaign', 'SMR Central': 'forum', Tasks: 'assignment' }[label] || 'groups';
+      {
+        Notifications: 'notifications',
+        Announcements: 'campaign',
+        'SMR Central': 'forum',
+        Tasks: 'assignment',
+      }[label] || 'groups';
     avatar.append(icon);
     return avatar;
   }
@@ -426,7 +431,7 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
         row.append(body, meta);
         const actions = document.createElement('div');
         actions.className = 'chat-message-actions';
-        if (!message.deleted) {
+        if (!message.deleted && !data.thread.read_only) {
           actions.append(iconButton('reply', 'Reply', () => reply(message)));
           const choose = (emoji) => {
             const mine = message.reactions?.some((r) => r.emoji === emoji && r.mine);
