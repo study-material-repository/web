@@ -555,7 +555,9 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       });
       if (!data.messages.length) {
         const p = document.createElement('p');
-        p.textContent = 'No messages yet. Say hello.';
+        p.textContent = data.thread.read_only
+          ? 'No notifications yet. Updates about your submissions will appear here.'
+          : 'No messages yet. Say hello.';
         feed.append(p);
       }
       if (atEnd || !lastRender) feed.scrollTop = feed.scrollHeight;
