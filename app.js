@@ -378,6 +378,21 @@
     return body.data;
   }
 
+  // Coins use a Material Symbols icon: the 🪙 emoji is missing from older system fonts.
+  function coinIcon() {
+    const ns = 'http://www.w3.org/2000/svg',
+      icon = document.createElementNS(ns, 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('class', 'coin-icon');
+    icon.setAttribute('role', 'img');
+    icon.setAttribute('aria-label', 'coins');
+    icon.innerHTML =
+      '<circle cx="12" cy="12" r="11" fill="#f9ab00"/><circle cx="12" cy="12" r="7.5" fill="#fbbc04" stroke="#e37400" stroke-width="1.5"/><path d="M9 8.5a5 5 0 0 1 4-1.8" fill="none" stroke="#fff3c4" stroke-width="1.5" stroke-linecap="round"/>';
+    return icon;
+  }
+  function setCoinText(element, before, after = '') {
+    element.replaceChildren(before, coinIcon(), after);
+  }
   function coins(value) {
     return (Math.round(Number(value || 0) * 100) / 100).toString();
   }
@@ -407,9 +422,12 @@
   }
   function confirmRequest(node) {
     const checkingOwnedFile = Boolean(node.access.is_owned);
-    requestSummary.textContent = checkingOwnedFile
-      ? node.name + ' — check Drive access'
-      : node.name + ' — ' + coins(Number(node.access.price_millis || 0) / 1000) + ' 🪙';
+    if (checkingOwnedFile) requestSummary.textContent = node.name + ' — check Drive access';
+    else
+      setCoinText(
+        requestSummary,
+        node.name + ' — ' + coins(Number(node.access.price_millis || 0) / 1000) + ' ',
+      );
     requestDetail.textContent = checkingOwnedFile
       ? 'We will verify your completed website purchase. No coins are spent for this check.'
       : 'Request access for the price shown.';
@@ -439,17 +457,22 @@
       new CustomEvent('smr-account', { detail: { isAdmin: !!state.member?.is_admin } }),
     );
     const signedIn = Boolean(state.member);
-    document.querySelector('#activity-balance').textContent = signedIn
-      ? coins(state.member.balance_coins) + ' 🪙'
-      : '—';
+    if (signedIn)
+      setCoinText(
+        document.querySelector('#activity-balance'),
+        coins(state.member.balance_coins) + ' ',
+      );
+    else document.querySelector('#activity-balance').textContent = '—';
     document.querySelector('#activity-email').textContent = signedIn
       ? state.member.delivery_email || state.member.school_email || ''
       : '';
     const treasury = document.querySelector('#treasury-summary');
     treasury.hidden = !signedIn || !state.member.is_admin;
     if (!treasury.hidden)
-      document.querySelector('#treasury-balance').textContent =
-        coins(state.member.treasury_balance_coins) + ' 🪙';
+      setCoinText(
+        document.querySelector('#treasury-balance'),
+        coins(state.member.treasury_balance_coins) + ' ',
+      );
     document.querySelector('#activity-account').textContent = signedIn
       ? 'Manage account'
       : 'Sign in or create account';
@@ -1113,7 +1136,7 @@
     if (node.coin_marked) {
       const coin = document.createElement('span');
       coin.className = 'tree-coin';
-      coin.textContent = '🪙';
+      coin.append(coinIcon());
       coin.setAttribute('aria-label', 'Coin-marked item');
       row.append(coin);
     }
@@ -3095,7 +3118,7 @@
         const card = document.createElement('article');
         card.className = 'community-task coinflip-card';
         const title = document.createElement('h3');
-        title.textContent = coins(flip.stake_coins) + ' 🪙 · ' + flip.chosen_side;
+        setCoinText(title, coins(flip.stake_coins) + ' ', ' · ' + flip.chosen_side);
         const detail = document.createElement('p');
         detail.textContent = 'Winner receives ' + coins(flip.stake_coins * 2) + ' coins.';
         card.append(
@@ -3124,7 +3147,11 @@
         const card = document.createElement('article');
         card.className = 'community-task coinflip-card';
         const title = document.createElement('h3');
-        title.textContent = 'Your wager · ' + coins(flip.stake_coins) + ' 🪙 · ' + flip.chosen_side;
+        setCoinText(
+          title,
+          'Your wager · ' + coins(flip.stake_coins) + ' ',
+          ' · ' + flip.chosen_side,
+        );
         const detail = document.createElement('p');
         detail.textContent =
           'Open for another member. The 2-coin burn fee is not refunded if cancelled.';
@@ -3149,12 +3176,14 @@
       data.recent.forEach((flip) => {
         const row = document.createElement('p');
         row.className = 'history-row';
-        row.textContent =
-          coins(flip.stake_coins) +
-          ' 🪙 · ' +
-          flip.chosen_side +
+        setCoinText(
+          row,
+          coins(flip.stake_coins) + ' ',
           ' · ' +
-          (flip.winner_id === state.member.member_id ? 'won' : 'lost');
+            flip.chosen_side +
+            ' · ' +
+            (flip.winner_id === state.member.member_id ? 'won' : 'lost'),
+        );
         recent.append(row);
       });
       if (!data.recent.length) recent.textContent = 'Your resolved coinflips will appear here.';
@@ -3216,16 +3245,14 @@
       title.textContent = profile.handle;
       content.append(monogram, title);
       [
-        [
-          'Coin balance',
-          profile.balance_coins == null ? null : coins(profile.balance_coins) + ' 🪙',
-        ],
+        ['Coin balance', profile.balance_coins == null ? null : coins(profile.balance_coins)],
         ['Submissions', profile.submissions],
         ['Completed tasks', profile.completed_tasks],
       ].forEach(([label, value]) => {
         if (value !== null) {
           const stat = document.createElement('p');
-          stat.textContent = label + ': ' + value;
+          if (label === 'Coin balance') setCoinText(stat, label + ': ' + value + ' ');
+          else stat.textContent = label + ': ' + value;
           content.append(stat);
         }
       });
@@ -3275,9 +3302,12 @@
       document.querySelector('#activity-email').textContent = '';
       return;
     }
-    document.querySelector('#activity-balance').textContent = state.member
-      ? coins(state.member.balance_coins) + ' 🪙'
-      : '—';
+    if (state.member)
+      setCoinText(
+        document.querySelector('#activity-balance'),
+        coins(state.member.balance_coins) + ' ',
+      );
+    else document.querySelector('#activity-balance').textContent = '—';
     document.querySelector('#activity-email').textContent = state.member?.delivery_email || '';
     more.disabled = true;
     busy(status);
@@ -3307,7 +3337,8 @@
           (when ? ' · ' + when : '');
         const amount = document.createElement('span');
         amount.className = 'history-amount';
-        amount.textContent = item.coins == null ? '—' : coins(item.coins) + ' 🪙';
+        if (item.coins == null) amount.textContent = '—';
+        else setCoinText(amount, coins(item.coins) + ' ');
         card.append(title, detail, amount);
         const actions = document.createElement('div');
         actions.className = 'task-actions';

@@ -40,7 +40,7 @@ body {
   margin: 0;
   background: var(--md-sys-color-surface);
   color: var(--md-sys-color-on-surface);
-  font-family: 'Roboto Flex', Roboto, Arial, sans-serif;
+  font-family: 'Roboto Flex', Roboto, Arial, sans-serif, 'Noto Color Emoji';
   font-size: 16px;
   line-height: 1.5;
 }
@@ -72,7 +72,7 @@ button {
   align-items: center;
   gap: 8px;
   color: var(--md-sys-color-on-surface);
-  font-family: 'Google Sans', 'Roboto Flex', sans-serif;
+  font-family: 'Google Sans', 'Roboto Flex', sans-serif, 'Noto Color Emoji';
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.3px;
@@ -140,7 +140,7 @@ button {
   border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--md-sys-color-on-surface);
-  font-family: 'Google Sans', 'Roboto Flex', sans-serif;
+  font-family: 'Google Sans', 'Roboto Flex', sans-serif, 'Noto Color Emoji';
   font-size: 14px;
   font-weight: 500;
 }
@@ -202,7 +202,7 @@ button {
 h1,
 h2 {
   margin: 0;
-  font-family: 'Google Sans', 'Roboto Flex', sans-serif;
+  font-family: 'Google Sans', 'Roboto Flex', sans-serif, 'Noto Color Emoji';
   font-weight: 500;
 }
 h1 {
@@ -410,7 +410,7 @@ h2 {
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
-  font-family: 'Google Sans', 'Roboto Flex', sans-serif;
+  font-family: 'Google Sans', 'Roboto Flex', sans-serif, 'Noto Color Emoji';
   font-size: 14px;
   font-weight: 600;
 }
@@ -565,7 +565,7 @@ h2 {
 .request-summary {
   margin: 22px 0 6px;
   color: var(--md-sys-color-on-surface);
-  font-family: 'Google Sans', 'Roboto Flex', sans-serif;
+  font-family: 'Google Sans', 'Roboto Flex', sans-serif, 'Noto Color Emoji';
   font-size: 18px;
   font-weight: 500;
   overflow-wrap: anywhere;
@@ -728,7 +728,7 @@ h2 {
   background: transparent;
   color: var(--md-sys-color-primary);
   cursor: pointer;
-  font-family: 'Google Sans', 'Roboto Flex', sans-serif;
+  font-family: 'Google Sans', 'Roboto Flex', sans-serif, 'Noto Color Emoji';
   font-size: 14px;
   font-weight: 600;
 }
@@ -780,7 +780,7 @@ h2 {
   background: transparent;
   color: var(--md-sys-color-on-surface);
   cursor: pointer;
-  font-family: 'Google Sans', 'Roboto Flex', sans-serif;
+  font-family: 'Google Sans', 'Roboto Flex', sans-serif, 'Noto Color Emoji';
   font-size: 14px;
   text-align: left;
 }

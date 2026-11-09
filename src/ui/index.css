@@ -15,7 +15,7 @@
   body {
     background: var(--m3e-sys-color-surface);
     color: var(--m3e-sys-color-on-surface);
-    font-family: var(--m3e-sys-typescale-body-large-font);
+    font-family: var(--m3e-sys-typescale-body-large-font), 'Noto Color Emoji';
   }
   .m3e-dialog {
     max-width: 95vw;
@@ -286,7 +286,7 @@
   button,
   input,
   textarea {
-    font-family: 'Google Sans', 'Roboto Flex', Arial, sans-serif;
+    font-family: 'Google Sans', 'Roboto Flex', Arial, sans-serif, 'Noto Color Emoji';
   }
   :root {
     --m3e-ref-typeface-plain: 'Google Sans';
@@ -812,7 +812,7 @@
   .m3e-menu__item,
   .m3e-text-field__input,
   .m3e-dialog__headline {
-    font-family: 'Google Sans', 'Roboto Flex', Arial, sans-serif;
+    font-family: 'Google Sans', 'Roboto Flex', Arial, sans-serif, 'Noto Color Emoji';
   }
   #tree-menu {
     position: fixed;
@@ -1015,5 +1015,14 @@
   .tree-row .tree-link:focus-visible,
   .tree-row .tree-file-link:hover {
     text-decoration: underline;
+  }
+}
+@layer app {
+  /* Coin amounts: a small gold coin, sized to the surrounding text. */
+  .coin-icon {
+    width: 0.9em;
+    height: 0.9em;
+    vertical-align: -0.1em;
+    margin-inline-start: 0.1em;
   }
 }
