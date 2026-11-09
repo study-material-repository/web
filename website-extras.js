@@ -452,16 +452,14 @@ const portraitPresets = [
   '0009pv000009iu0000seq900ghsj8bg0giejibl0brbblbp0lll8ll7000slsgo0',
   '0hr8rl00hli8ri000lhuu8000hhhlil00iiihil00ulllhq00orulr7000oooo70',
 ];
-/* Deterministic 7 by 7 pixel portraits: a seed, no uploaded image. */
-window.smrAvatar = function (seed) {
+/* A member's default portrait: one of the curated presets, chosen stably from their id. */
+window.smrDefaultPortrait = function (seed) {
   let n = 2166136261;
   for (const c of String(seed)) n = Math.imul(n ^ c.charCodeAt(0), 16777619) >>> 0;
-  const next = () => {
-    n ^= n << 13;
-    n ^= n >>> 17;
-    n ^= n << 5;
-    return n >>> 0;
-  };
+  return portraitPresets[n % portraitPresets.length];
+};
+/* Deterministic 7 by 7 pixel portraits: a seed, no uploaded image. */
+window.smrAvatar = function (seed) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 8 8');
   svg.classList.add('pixel-avatar');
@@ -493,9 +491,13 @@ window.smrAvatar = function (seed) {
   svg.onkeydown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') enlarge(e);
   };
-  if (/^pixels-[0-9a-v]{64}$/.test(String(seed))) {
+  // Members who have not drawn their own avatar get a stable hand-drawn portrait.
+  const pixels = /^pixels-[0-9a-v]{64}$/.test(String(seed))
+    ? seed.slice(7)
+    : window.smrDefaultPortrait(seed);
+  {
     const palette = portraitPalette;
-    [...seed.slice(7)].forEach((v, i) => {
+    [...pixels].forEach((v, i) => {
       if (v === '0') return;
       const r = document.createElementNS(svg.namespaceURI, 'rect');
       r.setAttribute('x', i % 8);
@@ -507,21 +509,6 @@ window.smrAvatar = function (seed) {
     });
     return svg;
   }
-  const colors = ['#1967d2', '#5f6368', '#8ab4f8'];
-  const color = colors[next() % colors.length];
-  for (let y = 0; y < 8; y++)
-    for (let x = 0; x < 4; x++)
-      if (next() % 2) {
-        for (const col of new Set([x, 7 - x])) {
-          const r = document.createElementNS(svg.namespaceURI, 'rect');
-          r.setAttribute('x', col);
-          r.setAttribute('y', y);
-          r.setAttribute('width', 1);
-          r.setAttribute('height', 1);
-          r.setAttribute('fill', color);
-          svg.append(r);
-        }
-      }
   return svg;
 };
 window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
@@ -801,7 +788,7 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
     const palette = portraitPalette;
     let pixels = /^pixels-[0-9a-v]{64}$/.test(data.avatar_seed)
         ? data.avatar_seed.slice(7).split('')
-        : Array(64).fill('0'),
+        : window.smrDefaultPortrait(data.avatar_seed).split(''),
       color = '1';
     const modal = document.createElement('dialog');
     modal.className = 'account-dialog';

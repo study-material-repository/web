@@ -25,7 +25,7 @@ for(const view of ['top','contribute','activity','chat']){
   await page.goto('http://127.0.0.1:4188');
   await page.locator('[data-view="'+view+'"]').click();
   await expect(page.locator('#'+view)).toBeVisible();
-  if(view==='top') await expect(page.locator('#sync-status')).toContainText('Synced');
+  if(view==='top') await expect(page.locator('#sync-status')).toContainText('Up to date');
   const results=await new AxeBuilder({page}).analyze();
   console.log(view,results.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})));
   await page.evaluate(()=>document.fonts.ready);

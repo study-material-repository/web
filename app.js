@@ -362,6 +362,17 @@
         button.classList.remove('is-loading');
       });
     });
+    if (
+      body &&
+      !body.ok &&
+      name !== 'signOut' &&
+      /^(Please sign in (again|to refresh your access|before requesting access)|Sign in first)\.?$/.test(
+        String(body.error || ''),
+      )
+    ) {
+      queueMicrotask(expireSession);
+      throw new Error('Your session has expired. Sign in again to continue.');
+    }
     if (!body || !body.ok)
       throw new Error((body && body.error) || 'The SMR service could not complete that request.');
     return body.data;
@@ -964,9 +975,9 @@
     const driveId = String(node.target_drive_item_id || node.id || '');
     return driveId ? 'https://drive.google.com/open?id=' + encodeURIComponent(driveId) : '';
   }
-  async function refreshMemberCatalogueState() {
+  async function refreshMemberCatalogueState(pending) {
     if (!state.token || !state.snapshot) return;
-    const result = await callServer('getMemberCatalogueState', state.token);
+    const result = await (pending || callServer('getMemberCatalogueState', state.token));
     rememberMember(result.member || null);
     (result.verified_access_ids || []).forEach((id) => confirmedAccess.add(accessKey({ id })));
     const owned = new Set((result.owned_item_ids || []).map(String));
@@ -1266,13 +1277,31 @@
     renderSearch();
   }
 
+  // One icon + label per catalogue state; colour is never the only signal.
+  const syncStates = {
+    refreshing: ['sync', 'Refreshing'],
+    synced: ['cloud_done', 'Up to date'],
+    cached: ['history', 'Saved copy'],
+    saved: ['offline_pin', 'Saved copy'],
+    offline: ['cloud_off', 'Offline'],
+  };
+  function setSyncStatus(kind) {
+    const [icon, label] = syncStates[kind];
+    syncStatus.dataset.state = kind;
+    syncStatus.innerHTML =
+      '<span class="material-symbols-outlined sync-icon" aria-hidden="true">' +
+      icon +
+      '</span><span class="sync-label">' +
+      label +
+      '</span>';
+  }
   function loadCachedCatalogue() {
     try {
       const cached = JSON.parse(localStorage.getItem('smr_public_catalogue_v1') || 'null');
       if (!cached || !cached.saved_at || !Array.isArray(cached.snapshot?.nodes)) return;
       state.snapshot = cached.snapshot;
       renderCatalogue();
-      syncStatus.innerHTML = '<span class="status-dot"></span>Refreshing';
+      setSyncStatus('refreshing');
     } catch {
       localStorage.removeItem('smr_public_catalogue_v1');
     }
@@ -1302,10 +1331,13 @@
           if (!state.snapshot?.nodes?.length && Array.isArray(saved.nodes) && saved.nodes.length) {
             state.snapshot = saved;
             renderCatalogue();
-            syncStatus.textContent = 'Saved catalogue';
+            setSyncStatus('saved');
           }
         })
         .catch(() => {});
+    // Account state comes from Apps Script (slow); fetch it alongside the catalogue, not after.
+    const memberState = state.token ? callServer('getMemberCatalogueState', state.token) : null;
+    memberState?.catch(() => {});
     try {
       state.snapshot = await callServer('getCatalogueSnapshot', '');
       loadExpansionState();
@@ -1313,16 +1345,14 @@
       renderCatalogue();
       if (state.token) {
         try {
-          await refreshMemberCatalogueState();
+          await refreshMemberCatalogueState(memberState);
         } catch (error) {
           showToast('Account access could not refresh. Please try again.');
         }
       }
       updateAccount();
       renderCatalogue();
-      syncStatus.innerHTML = state.snapshot.stale
-        ? '<span class="status-dot"></span>Cached'
-        : '<span class="status-dot"></span>Synced';
+      setSyncStatus(state.snapshot.stale ? 'cached' : 'synced');
       syncStatus.title = state.snapshot.generated_at
         ? 'Catalogue refreshed ' +
           new Date(state.snapshot.generated_at).toLocaleString('en-GB') +
@@ -1343,7 +1373,7 @@
             '<p class="loading-state">Could not reach the catalogue. Please reconnect and refresh.</p>';
         }
       }
-      syncStatus.textContent = state.snapshot?.nodes?.length ? 'Saved catalogue' : 'Offline';
+      setSyncStatus(state.snapshot?.nodes?.length ? 'saved' : 'offline');
       syncStatus.title =
         'Live refresh is unavailable. Saved listings may be out of date; purchases still require a live check.';
     }
@@ -1395,6 +1425,10 @@
     } catch {
       /* Local sign-out still succeeds. */
     }
+    endLocalSession();
+    dialog.close();
+  });
+  function endLocalSession() {
     state.token = '';
     invalidateViews();
     warmingToken = '';
@@ -1405,9 +1439,15 @@
     rememberMember(null);
     localStorage.removeItem('smr_session_token_v1');
     updateAccount();
-    dialog.close();
     loadCatalogue();
-  });
+  }
+  // An expired or revoked session cannot succeed on retry: sign in again instead.
+  function expireSession() {
+    if (!state.token) return;
+    endLocalSession();
+    openAccount();
+    setMessage('Your session has expired. Sign in again to continue.');
+  }
   let searchTimer;
   search.addEventListener('input', () => {
     clearTimeout(searchTimer);

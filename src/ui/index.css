@@ -956,3 +956,64 @@
     min-height: 96px;
   }
 }
+@layer app {
+  /* Catalogue freshness: icon + label (label hidden on narrow screens, kept in the title). */
+  .sync-status {
+    gap: 6px;
+    min-height: 32px;
+    padding: 0 10px 0 8px;
+    border-radius: 999px;
+    background: var(--m3e-sys-color-surface-container-high);
+    color: var(--m3e-sys-color-on-surface-variant);
+  }
+  .sync-status .sync-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+  .sync-status[data-state='synced'] .sync-icon {
+    color: #188038;
+  }
+  .sync-status[data-state='cached'] .sync-icon,
+  .sync-status[data-state='saved'] .sync-icon {
+    color: #b06000;
+  }
+  .sync-status[data-state='offline'] .sync-icon {
+    color: var(--m3e-sys-color-error);
+  }
+  .sync-status[data-state='refreshing'] .sync-icon {
+    animation: sync-spin 1.2s linear infinite;
+  }
+  @keyframes sync-spin {
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sync-status[data-state='refreshing'] .sync-icon {
+      animation: none;
+    }
+  }
+  @media (max-width: 600px) {
+    .sync-status {
+      padding: 0 7px;
+    }
+    .sync-status .sync-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  /* Files in the tree read as links: Google blue, underline on hover/focus. */
+  .tree-row .tree-link,
+  .tree-row .tree-file-link {
+    color: #1a73e8;
+  }
+  .tree-row .tree-link:hover,
+  .tree-row .tree-link:focus-visible,
+  .tree-row .tree-file-link:hover {
+    text-decoration: underline;
+  }
+}
