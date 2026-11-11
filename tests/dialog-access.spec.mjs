@@ -41,3 +41,29 @@ for (const dismiss of ['escape', 'native']) test('access confirmation can be ret
  await expect(dialog.locator('#confirm-request')).toHaveText('Request access');
  expect(checks).toBe(2);
 });
+
+test('folder picker hands off to contribution and can be opened again', async ({page}) => {
+ await page.addInitScript(() => localStorage.setItem('smr_session_token_v1','fixture'));
+ await page.route('**/api', async route => {
+  const action = route.request().postDataJSON().action;
+  const values = {catalogue_snapshot:{nodes,stale:false},member_catalogue_state:{member,owned_item_ids:[],verified_access_ids:[]},
+   site_tips:{tips:[]},community_tasks:{tasks:[]},community_review_queue:{mine:[],items:[]},
+   member_request_history:{items:[],requests:[],history:[]},website_data:{stats:{},recent:[],additions:[]},
+   chat_hub:{contacts:[],spaces:[],messages:[]}};
+  await route.fulfill({json:{ok:true,data:values[action]||{}}});
+ });
+ await page.goto('http://127.0.0.1:4188/');
+ await page.locator('[data-view="contribute"]').click();
+ await page.locator('#contribute-button').click();
+ const picker=page.locator('#folder-picker');
+ await expect(picker).toBeVisible();
+ await picker.getByRole('button',{name:'Root ›'}).click();
+ await picker.locator('#picker-use').click();
+ const contribution=page.locator('#contribution-dialog');
+ await expect(contribution).toBeVisible();
+ await expect(contribution).toContainText('Root');
+ await contribution.locator('#close-contribution-dialog').click();
+ await expect(contribution).toBeHidden();
+ await page.locator('#contribute-button').click();
+ await expect(picker).toBeVisible();
+});
