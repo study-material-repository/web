@@ -79,6 +79,51 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
   let replyTo = null,
     editing = null,
     preloading = false;
+  const chatNavigation = document.querySelector('[data-view="chat"]');
+  const unreadBadge = document.createElement('span');
+  unreadBadge.className = 'm3e-badge chat-unread-badge';
+  unreadBadge.setAttribute('aria-hidden', 'true');
+  unreadBadge.hidden = true;
+  chatNavigation.querySelector('.m3e-navigation-item__content').append(unreadBadge);
+  let unreadGeneration = 0,
+    unreadInFlight = false;
+  function showUnread(data, markedThread) {
+    const hasUnread = ['contacts', 'spaces'].some((key) =>
+      (Array.isArray(data?.[key]) ? data[key] : []).some(
+        (item) =>
+          Number(item.unread) > 0 &&
+          !(
+            markedThread &&
+            markedThread.kind === (key === 'spaces' ? 'space' : 'dm') &&
+            markedThread.id === item.id
+          ),
+      ),
+    );
+    unreadBadge.hidden = !hasUnread;
+    if (hasUnread) chatNavigation.setAttribute('aria-label', 'Chat, unread messages');
+    else chatNavigation.removeAttribute('aria-label');
+  }
+  async function refreshUnread() {
+    if (
+      !state.token ||
+      unreadInFlight ||
+      readsInFlight ||
+      document.visibilityState !== 'visible' ||
+      !host.hidden
+    )
+      return;
+    const token = state.token,
+      epoch = ++unreadGeneration;
+    unreadInFlight = true;
+    try {
+      const data = await callServer('chatHub', { mark_read: false });
+      if (state.token === token && epoch === unreadGeneration && host.hidden) showUnread(data);
+    } catch {
+      // Keep the last known indicator when a background check fails.
+    } finally {
+      unreadInFlight = false;
+    }
+  }
   const unreadMarkers = new Map();
   const replyBanner = document.createElement('div');
   replyBanner.className = 'chat-reply-preview';
@@ -229,9 +274,13 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
       compose.hidden = true;
     }
     if (!state.token) {
+      unreadGeneration++;
+      showUnread(null);
       $('chat-error').textContent = 'Sign in to use chat.';
       return;
     }
+    const unreadEpoch = ++unreadGeneration;
+    const markRead = document.visibilityState === 'visible' && !host.hidden;
     const epoch = ++generation,
       token = state.token,
       target = selected ? { [selected.kind === 'space' ? 'space_id' : 'peer']: selected.id } : {};
@@ -242,10 +291,12 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     try {
       const data = await callServer('chatHub', {
         ...target,
-        mark_read: document.visibilityState === 'visible' && !host.hidden,
+        mark_read: markRead,
       });
       if (epoch !== generation || token !== state.token) return;
       snapshots.set(draftKey(selected), data);
+      if (unreadEpoch === unreadGeneration)
+        showUnread(data, markRead && data.messages?.length ? selected : null);
       render(data);
       void preload(data, token);
     } catch (error) {
@@ -692,11 +743,13 @@ window.setupSmrChat = function ({ state, callServer, showToast, openAccount }) {
     }
   });
   setInterval(() => {
-    if (!host.hidden && document.visibilityState === 'visible' && !inFlight && !readsInFlight)
-      load();
+    if (document.visibilityState !== 'visible') return;
+    if (!host.hidden && !inFlight && !readsInFlight) load();
+    else if (host.hidden) void refreshUnread();
   }, 20000);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !host.hidden) load();
+    else if (document.visibilityState === 'visible') void refreshUnread();
   });
   document.addEventListener('smr-identity', () => {
     if (lastToken !== state.token) void load();
