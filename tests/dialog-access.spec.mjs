@@ -106,3 +106,33 @@ test('access check updates the same dialog and purchase requires confirmation', 
  await dialog.locator('#cancel-request').click();
  await expect(dialog).toBeHidden();
 });
+
+test('failed access check can be retried without purchasing', async ({page}) => {
+ let checks=0;
+ await page.addInitScript(()=>localStorage.setItem('smr_session_token_v1','fixture'));
+ await page.route('**/api',async route=>{
+  const request=route.request().postDataJSON();
+  const values={catalogue_snapshot:{nodes,stale:false},member_catalogue_state:{member,owned_item_ids:[],verified_access_ids:[]},
+   site_tips:{tips:[]},community_tasks:{tasks:[]},community_review_queue:{mine:[],items:[]},
+   member_request_history:{items:[],requests:[],history:[]},website_data:{stats:{},recent:[],additions:[]},
+   chat_hub:{contacts:[],spaces:[],messages:[]}};
+  if(request.action==='request_catalogue_access'){
+   checks++;
+   if(checks===1)return route.fulfill({status:400,json:{ok:false,error:'Simulated check failure'}});
+   return route.fulfill({json:{ok:true,data:{status:'ACCESS_REQUIRED',price_coins:1,check_token:'fixture-token'}}});
+  }
+  return route.fulfill({json:{ok:true,data:values[request.action]||{}}});
+ });
+ await page.goto('http://127.0.0.1:4188/');
+ await page.locator('[data-view="top"]').click();
+ await page.getByRole('button',{name:'Search materials'}).click();
+ await page.locator('#catalogue-search').fill('Example exam');
+ const open=page.getByRole('button',{name:'Open file',exact:true}).first();
+ await open.click();
+ await expect(page.locator('#toast')).toContainText('Simulated check failure');
+ await expect(page.locator('#request-dialog')).toBeHidden();
+ await open.click();
+ await expect(page.locator('#request-dialog')).toBeVisible();
+ await expect(page.locator('#confirm-request')).toHaveText('Request access');
+ expect(checks).toBe(2);
+});
