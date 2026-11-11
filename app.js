@@ -1418,6 +1418,9 @@
     event.preventDefault();
     closeRequestDialog(false);
   });
+  requestDialog.addEventListener('close', () => {
+    if (!requestDialog.open && !requestInFlight && resolvePendingRequest) closeRequestDialog(false);
+  });
   document
     .querySelectorAll('.back-button')
     .forEach((button) => button.addEventListener('click', () => showForm('')));
