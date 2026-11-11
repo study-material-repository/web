@@ -682,23 +682,41 @@
             autocomplete="off"
             required
         /></label>
-        <label
+        <div class="submission-methods" role="group" aria-label="Material source">
+          <button type="button" id="use-upload" aria-pressed="true">Upload file</button>
+          <button type="button" id="use-link" aria-pressed="false">Use a link</button>
+        </div>
+        <div id="upload-fields">
+          <input
+            id="contribution-file"
+            type="file"
+            accept="application/pdf,image/png,image/jpeg"
+            hidden
+          />
+          <button id="choose-contribution-file" type="button" class="upload-dropzone">
+            <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
+            <span id="upload-file-label">Drop a file here or choose a file</span>
+            <span class="dialog-copy">PDF, PNG or JPEG · up to 20 MB · PDFs up to 150 pages</span>
+          </button>
+          <button id="remove-contribution-file" class="text-button" type="button" hidden>
+            Remove file
+          </button>
+        </div>
+        <label id="contribution-link-field" hidden
           >Material link<input
             id="contribution-url"
             type="url"
             inputmode="url"
             placeholder="https://…"
             autocomplete="url"
-            required
         /></label>
         <label
           >Note for reviewers <span class="optional-label">optional</span
           ><textarea id="contribution-note" maxlength="1000" rows="3"></textarea>
         </label>
-        <p class="form-help">
-          For a Drive file, share the link with thestudymaterialrepository@gmail.com. YouTube links
-          work well for large videos. A copy of your Drive file waits in the review folder, then
-          moves to your chosen folder after approval.
+        <p class="form-help" id="contribution-source-help">
+          Your file stays private while reviewers check it. After approval, it is added to the
+          selected repository folder.
         </p>
         <button class="tonal-button" type="submit">Submit for review</button>
       </form>

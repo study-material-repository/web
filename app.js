@@ -253,6 +253,7 @@
           decision: args[1],
           note: args[2] || '',
           proposed_title: args[3] || '',
+          proposed_target_id: args[4] || '',
         },
       ],
       submitCatalogueContribution: [
@@ -264,6 +265,7 @@
           source_url: args[3],
           note: args[4],
           task_id: args.length > 5 ? args[5] : state.contributionTaskId || '',
+          upload_id: args[6] || '',
         },
       ],
       sendCoins: [
@@ -1815,17 +1817,194 @@
       cancel.focus();
     });
   }
+  let contributionFile = null,
+    stagedUpload = null,
+    useFileUpload = true;
+  const fileInput = document.querySelector('#contribution-file');
+  const dropzone = document.querySelector('#choose-contribution-file');
+  function selectContributionFile(file) {
+    if (!file) return;
+    if (!/\.(pdf|png|jpe?g)$/i.test(file.name) || file.size > 20 * 1024 * 1024 || !file.size) {
+      clearContributionFile();
+      contributionMessage.textContent = 'Choose a PDF, PNG or JPEG file up to 20 MB.';
+      return;
+    }
+    contributionFile = file;
+    stagedUpload = null;
+    document.querySelector('#upload-file-label').textContent =
+      file.name + ' · ' + (file.size / 1024 / 1024).toFixed(1) + ' MB';
+    document.querySelector('#remove-contribution-file').hidden = false;
+    const title = document.querySelector('#contribution-title-input');
+    if (!title.value) title.value = file.name.slice(0, 180);
+    contributionMessage.textContent = '';
+  }
+  dropzone.onclick = () => fileInput.click();
+  fileInput.onchange = () => selectContributionFile(fileInput.files[0]);
+  for (const type of ['dragenter', 'dragover'])
+    dropzone.addEventListener(type, (event) => {
+      event.preventDefault();
+      dropzone.classList.add('drag-over');
+    });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    dropzone.classList.remove('drag-over');
+    if (event.dataTransfer.files.length !== 1) {
+      clearContributionFile();
+      contributionMessage.textContent = 'Choose one file per submission.';
+      return;
+    }
+    selectContributionFile(event.dataTransfer.files[0]);
+  });
+  function clearContributionFile() {
+    contributionFile = null;
+    stagedUpload = null;
+    fileInput.value = '';
+    document.querySelector('#upload-file-label').textContent = 'Drop a file here or choose a file';
+    document.querySelector('#remove-contribution-file').hidden = true;
+  }
+  document.querySelector('#remove-contribution-file').onclick = clearContributionFile;
+  for (const [id, file] of [
+    ['use-upload', true],
+    ['use-link', false],
+  ])
+    document.querySelector('#' + id).onclick = () => {
+      useFileUpload = file;
+      document.querySelector('#upload-fields').hidden = !file;
+      document.querySelector('#contribution-link-field').hidden = file;
+      document.querySelector('#contribution-url').required = !file;
+      document.querySelector('#use-upload').setAttribute('aria-pressed', String(file));
+      document.querySelector('#use-link').setAttribute('aria-pressed', String(!file));
+      document.querySelector('#contribution-source-help').textContent = file
+        ? 'Your file stays private while reviewers check it. After approval, it is added to the selected repository folder.'
+        : 'For Drive material, share access with thestudymaterialrepository@gmail.com. Review PDFs and images privately here; use video links for videos.';
+    };
+  async function uploadContribution() {
+    if (stagedUpload) return stagedUpload;
+    window.SMRProgress?.start();
+    contributionMessage.textContent = 'Uploading your file…';
+    try {
+      const response = await fetch(apiUrl() + '/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + state.token,
+          'Content-Type': 'application/octet-stream',
+          'X-File-Name': encodeURIComponent(contributionFile.name),
+        },
+        body: contributionFile,
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok)
+        throw Error(result.error || 'Upload failed. Please try again.');
+      stagedUpload = result.data.id;
+      return stagedUpload;
+    } finally {
+      window.SMRProgress?.end();
+    }
+  }
+  async function openReviewPreview(item) {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'account-dialog review-preview';
+    dialog.setAttribute('aria-label', 'Review ' + item.title);
+    const heading = document.createElement('h2');
+    heading.textContent = item.title;
+    const status = document.createElement('p');
+    status.setAttribute('role', 'status');
+    status.textContent = 'Preparing private preview…';
+    const content = document.createElement('div');
+    content.className = 'review-preview-content';
+    const controls = document.createElement('div');
+    controls.className = 'task-actions';
+    const close = actionButton('Close', () => dialog.close());
+    dialog.append(heading, status, content, controls, close);
+    document.body.append(dialog);
+    let objectUrl,
+      page = 1;
+    const abort = new AbortController();
+    dialog.onclose = () => {
+      abort.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      dialog.remove();
+    };
+    window.SMRMaterial.open(dialog);
+    try {
+      const result = await callServer('reviewContribution', item.id, 'open');
+      if (!dialog.open) return;
+      if (!result.preview) {
+        const link = document.createElement('a');
+        link.href = result.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'Open linked material';
+        content.append(link);
+        status.textContent = 'This material opens on its original site.';
+        return;
+      }
+      const image = document.createElement('img');
+      image.alt = 'Page of submitted material';
+      image.draggable = false;
+      content.append(image);
+      const previous = document.createElement('button'),
+        next = document.createElement('button');
+      previous.type = next.type = 'button';
+      previous.textContent = 'Previous page';
+      next.textContent = 'Next page';
+      previous.onclick = () => load(page - 1);
+      next.onclick = () => load(page + 1);
+      controls.append(previous, next);
+      async function load(number) {
+        previous.disabled = next.disabled = true;
+        window.SMRProgress?.start();
+        status.textContent = 'Loading page ' + number + '…';
+        try {
+          const response = await fetch(apiUrl() + '/review-page', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + state.token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ grant: result.preview.grant, page: number }),
+            signal: abort.signal,
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw Error(error.error || 'Preview unavailable.');
+          }
+          const blob = await response.blob();
+          if (!dialog.open) return;
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+          objectUrl = URL.createObjectURL(blob);
+          image.src = objectUrl;
+          page = number;
+          status.textContent = 'Page ' + page + ' of ' + result.preview.pages;
+        } catch (error) {
+          if (error.name !== 'AbortError') status.textContent = error.message;
+        } finally {
+          previous.disabled = page <= 1;
+          next.disabled = page >= result.preview.pages;
+          window.SMRProgress?.end();
+        }
+      }
+      await load(1);
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  }
   contributionForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const button = contributionForm.querySelector('button[type=submit]');
     if (button.disabled) return;
+    if (useFileUpload && !contributionFile) {
+      contributionMessage.textContent = 'Choose a file first.';
+      dropzone.focus();
+      return;
+    }
     button.disabled = true;
     if (
       !(await confirmSubmission(
         'Submit this material?',
         document.querySelector('#contribution-title-input').value +
           ' — ' +
-          document.querySelector('#contribution-url').value,
+          (useFileUpload
+            ? contributionFile.name
+            : document.querySelector('#contribution-url').value),
       ))
     ) {
       button.disabled = false;
@@ -1841,9 +2020,12 @@
         document.querySelector('#contribution-title-input').value,
         document.querySelector('#contribution-url').value,
         document.querySelector('#contribution-note').value,
+        state.contributionTaskId || '',
+        useFileUpload ? await uploadContribution() : '',
       );
       contributionDialog.close();
       contributionForm.reset();
+      clearContributionFile();
       loadReviews();
       showToast(
         result.duplicate
@@ -2910,23 +3092,29 @@
         noteLabel.append(explanation);
         explanation.maxLength = 1000;
         explanation.setAttribute('aria-label', 'Review note');
+        let proposedTarget = item.target_id || '';
+        const destination = document.createElement('div');
+        destination.className = 'review-destination';
+        const destinationText = document.createElement('p');
+        destinationText.textContent = 'Destination: ' + item.path;
+        destination.append(destinationText);
+        if (!item.my_decision)
+          destination.append(
+            actionButton('Change destination', () =>
+              chooseFolder((id) => {
+                proposedTarget = id;
+                destinationText.textContent =
+                  'Destination: ' + cataloguePathFor(snapshotNodeById(id));
+              }),
+            ),
+          );
         card.classList.add('review-card');
         card.append(
           title,
           detail,
           nameLabel,
-          actionButton('Open material', async () => {
-            const tab = window.open('about:blank', '_blank');
-            if (tab) tab.opener = null;
-            try {
-              const result = await callServer('reviewContribution', item.id, 'open');
-              if (tab) tab.location.href = result.url;
-              else showToast('Allow pop-ups to open the review material.');
-            } catch (error) {
-              if (tab) tab.close();
-              throw error;
-            }
-          }),
+          destination,
+          actionButton('Open material', () => openReviewPreview(item)),
           noteLabel,
         );
         for (const decision of item.my_decision ? [item.my_decision] : ['approve', 'reject'])
@@ -2952,6 +3140,7 @@
                   decision,
                   explanation.value,
                   publishedName.value,
+                  proposedTarget,
                 );
                 showToast(
                   result.status === 'pending'
@@ -2978,7 +3167,11 @@
         badge.className = 'status-chip';
         badge.textContent = item.status;
         row.append(title, badge);
-        if (item.source_url && /^https:\/\//i.test(item.source_url)) {
+        if (
+          item.source_kind !== 'vps_upload' &&
+          item.source_url &&
+          /^https:\/\//i.test(item.source_url)
+        ) {
           const link = document.createElement('a');
           link.href = item.source_url;
           link.target = '_blank';
@@ -3051,6 +3244,10 @@
       input.required = key !== 'note';
       if (key === 'source_url') input.type = 'url';
       input.maxLength = key === 'title' ? 180 : key === 'note' ? 1000 : 2000;
+      if (key === 'source_url' && item.source_kind === 'vps_upload') {
+        label.hidden = true;
+        input.required = false;
+      }
       label.append(input);
       form.append(label);
       fields[key] = input;
@@ -3474,6 +3671,9 @@
   );
   // Scroll inside the rounded surface, never along its outer edge.
   document.querySelectorAll('dialog.account-dialog').forEach((modal) => {
+    // The Material container already provides the rounded, scrollable upload surface.
+    if (modal === contributionDialog && modal.querySelector(':scope > .m3e-dialog__container'))
+      return;
     const body = document.createElement('div');
     body.className = 'dialog-scroll';
     while (modal.firstChild) body.append(modal.firstChild);

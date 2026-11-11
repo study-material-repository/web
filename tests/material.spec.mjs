@@ -140,18 +140,18 @@ test('populated review queue opens the staged copy and records approval',async({
  await page.route('**/api',async route=>{
   const {action,payload}=route.request().postDataJSON();
   if(action==='community_review_queue')return route.fulfill({json:{ok:true,data:{academic_year:2,is_admin:true,mine:[{id:'own',title:'My pending notes',status:'pending',source_url:'https://drive.google.com/file/d/source/view'}],items:approved?[]:[{id:'review-one',title:'Revision notes',path:'Year 2 / 2.1 / Notes',note:'Check the worked examples.',my_decision:''}]}}});
-  if(action==='review_contribution'){calls.push(payload);if(payload.decision==='approve')approved=true;return route.fulfill({json:{ok:true,data:payload.decision==='open'?{url:'https://drive.google.com/open?id=staged-copy'}:{status:'approved'}}});}
+  if(action==='review_contribution'){calls.push(payload);if(payload.decision==='approve')approved=true;return route.fulfill({json:{ok:true,data:payload.decision==='open'?{preview:{grant:'review-grant',pages:1}}:{status:'approved'}}});}
   return route.fallback();
  });
- await page.context().route('https://drive.google.com/**',route=>route.fulfill({contentType:'text/html',body:'<title>Review copy</title>'}));
+ await page.route('**/api/review-page',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII=','base64')}));
  await page.goto('http://127.0.0.1:4188/#contribute');
  const card=page.locator('#review-list article');await expect(card).toContainText('Revision notes');
  await expect(page.locator('#review-status')).not.toContainText('defined');
  await expect(page.locator('#submission-list')).toContainText('My pending notes');
  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
  await page.screenshot({path:test.info().outputPath('populated-review.png'),fullPage:true});
- const opened=page.waitForEvent('popup');await card.getByRole('button',{name:'Open material',exact:true}).click();
- const popup=await opened;await expect(popup).toHaveURL('https://drive.google.com/open?id=staged-copy');await popup.close();
+ await card.getByRole('button',{name:'Open material',exact:true}).click();
+ const preview=page.getByRole('dialog',{name:'Revision notes'});await expect(preview).toContainText('Page 1 of 1');await preview.getByRole('button',{name:'Close',exact:true}).click();
  await card.getByLabel('Published file name').fill('Approved notes.pdf');
  await card.getByRole('button',{name:'Approve',exact:true}).click();
  await expect(page.locator('#review-list')).toContainText('No matching submissions');
@@ -236,4 +236,31 @@ test('overlapping review refreshes render each submission only once',async({page
  await expect.poll(()=>requests).toBeGreaterThan(1);release();
  await expect(page.locator('#review-list article')).toHaveCount(1);
  await expect(page.locator('#review-list')).toContainText('One stored submission');
+});
+
+test('direct contribution accepts a dropped file and confirms before submission',async({page})=>{
+ const submitted=[];let uploads=0;
+ await page.route('**/api/upload',async route=>{uploads++;expect(route.request().headers().authorization).toBe('Bearer fixture');return route.fulfill({json:{ok:true,data:{id:'upload-fixture'}}});});
+ await page.route('**/api',async route=>{const request=route.request().postDataJSON();if(request.action!=='submit_catalogue_contribution')return route.fallback();submitted.push(request.payload);return route.fulfill({json:{ok:true,data:{contribution_id:'new',duplicate:false}}});});
+ await page.goto('http://127.0.0.1:4188/#contribute');
+ await page.getByRole('button',{name:'Submit material',exact:true}).click();await page.locator('#picker-folders button').first().click();await page.locator('#picker-use').click();
+ const form=page.locator('#contribution-dialog');await expect(form).toBeVisible();
+ await page.locator('#choose-contribution-file').evaluate(element=>{const transfer=new DataTransfer();transfer.items.add(new File(['example'],'Revision notes.pdf',{type:'application/pdf'}));element.dispatchEvent(new DragEvent('drop',{bubbles:true,dataTransfer:transfer}));});
+ await expect(page.locator('#upload-file-label')).toContainText('Revision notes.pdf');
+ await page.locator('#contribution-file').setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from('wrong')});
+ await expect(page.locator('#upload-file-label')).toHaveText('Drop a file here or choose a file');
+ await expect(page.locator('#contribution-message')).toContainText('Choose a PDF');
+ await page.locator('#contribution-file').setInputFiles({name:'Revision notes.pdf',mimeType:'application/pdf',buffer:Buffer.from('example')});
+ await expect(page.locator('#contribution-title-input')).toHaveValue('Revision notes.pdf');
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ const surface=form.locator(':scope > .m3e-dialog__container');
+ await expect(surface).toHaveCount(1);
+ expect(await surface.evaluate(e=>parseFloat(getComputedStyle(e).borderTopLeftRadius))).toBeGreaterThan(0);
+ await surface.evaluate(e=>e.scrollTop=e.scrollHeight);
+ await expect(form.getByRole('button',{name:'Submit for review',exact:true})).toBeInViewport();
+ await surface.evaluate(e=>e.scrollTop=0);
+ await page.screenshot({path:test.info().outputPath('upload-contribution.png')});
+ await form.getByRole('button',{name:'Submit for review',exact:true}).click();expect(uploads).toBe(0);
+ await page.getByRole('button',{name:'Confirm submission',exact:true}).click();
+ await expect(form).toBeHidden();expect(uploads).toBe(1);expect(submitted[0].upload_id).toBe('upload-fixture');
 });
