@@ -409,7 +409,7 @@
     if (!resolvePendingRequest) return;
     const resolve = resolvePendingRequest;
     resolvePendingRequest = null;
-    if (!confirmed) requestDialog.close();
+    if (!confirmed) window.SMRMaterial.close(requestDialog);
     resolve(confirmed);
   }
   function setRequestProgress(message, busy) {
@@ -935,7 +935,7 @@
       delete node.checkToken;
       requestInFlight = false;
       setRequestProgress('', false);
-      requestDialog.close();
+      window.SMRMaterial.close(requestDialog);
       if (result.status === 'ACCESS_REQUIRED') {
         node.checkToken = result.check_token;
         node.access = {
@@ -982,7 +982,7 @@
         const open = await new Promise((resolve) => {
           resolvePendingRequest = resolve;
         });
-        requestDialog.close();
+        window.SMRMaterial.close(requestDialog);
         requestCancel.textContent = 'Cancel';
         if (open) openCatalogueFile(node);
       }
@@ -990,7 +990,7 @@
     } catch (error) {
       requestInFlight = false;
       setRequestProgress('', false);
-      if (requestDialog.open) requestDialog.close();
+      if (requestDialog.open) window.SMRMaterial.close(requestDialog);
       showToast(error.message);
     }
   }
