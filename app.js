@@ -730,13 +730,20 @@
       setMessage('Sign in first, then contribute material.');
       return;
     }
-    const target = snapshotNodeById(targetId);
-    if (!target || target.kind !== 'folder') {
-      showToast('Right-click the destination folder and choose “Contribute here”.');
-      return;
-    }
-    state.contributionTargetId = String(target.id);
-    contributionTargetPath.textContent = cataloguePathFor(target);
+    const target = targetId ? snapshotNodeById(targetId) : null;
+    if (targetId && (!target || target.kind !== 'folder')) return;
+    contributionForm.reset();
+    autoContributionTitle = '';
+    clearContributionFile();
+    document.querySelector('#use-upload').click();
+    document.querySelector('#contribution-suggest-folder').hidden = true;
+    state.contributionTargetId = target ? String(target.id) : '';
+    contributionTargetPath.textContent = target ? cataloguePathFor(target) : 'No folder selected';
+    document.querySelector('#contribution-clear-folder').hidden =
+      !target || !!state.contributionTaskId;
+    document.querySelector('#contribution-choose-folder').hidden = !!state.contributionTaskId;
+    document.querySelector('#contribution-source-step').hidden = false;
+    document.querySelector('#contribution-details-step').hidden = true;
     contributionMessage.textContent = '';
     window.SMRMaterial.open(contributionDialog);
   }
@@ -1443,7 +1450,7 @@
   );
   document.querySelector('#contribute-button').addEventListener('click', () => {
     state.contributionTaskId = '';
-    chooseFolder((id) => openContribution(id));
+    openContribution('');
   });
   document
     .querySelector('#close-contribution-dialog')
@@ -1819,7 +1826,8 @@
   }
   let contributionFile = null,
     stagedUpload = null,
-    useFileUpload = true;
+    useFileUpload = true,
+    autoContributionTitle = '';
   const fileInput = document.querySelector('#contribution-file');
   const dropzone = document.querySelector('#choose-contribution-file');
   function selectContributionFile(file) {
@@ -1831,11 +1839,18 @@
     }
     contributionFile = file;
     stagedUpload = null;
-    document.querySelector('#upload-file-label').textContent =
-      file.name + ' · ' + (file.size / 1024 / 1024).toFixed(1) + ' MB';
+    const size =
+      file.size < 1024 * 1024
+        ? Math.max(1, Math.round(file.size / 1024)) + ' KB'
+        : (file.size / 1024 / 1024).toFixed(1) + ' MB';
+    document.querySelector('#upload-file-label').textContent = file.name + ' · ' + size;
     document.querySelector('#remove-contribution-file').hidden = false;
     const title = document.querySelector('#contribution-title-input');
-    if (!title.value) title.value = file.name.slice(0, 180);
+    if (!title.value || title.value === autoContributionTitle) {
+      autoContributionTitle = file.name.slice(0, 180);
+      title.value = autoContributionTitle;
+    }
+    suggestContributionFolder(file.name);
     contributionMessage.textContent = '';
   }
   dropzone.onclick = () => fileInput.click();
@@ -1862,8 +1877,60 @@
     fileInput.value = '';
     document.querySelector('#upload-file-label').textContent = 'Drop a file here or choose a file';
     document.querySelector('#remove-contribution-file').hidden = true;
+    document.querySelector('#contribution-suggest-folder').hidden = true;
   }
   document.querySelector('#remove-contribution-file').onclick = clearContributionFile;
+  function setContributionFolder(id) {
+    const node = id ? snapshotNodeById(id) : null;
+    state.contributionTargetId = node ? String(node.id) : '';
+    contributionTargetPath.textContent = node ? cataloguePathFor(node) : 'No folder selected';
+    document.querySelector('#contribution-clear-folder').hidden =
+      !node || !!state.contributionTaskId;
+  }
+  function suggestContributionFolder(name) {
+    const button = document.querySelector('#contribution-suggest-folder');
+    button.hidden = true;
+    if (state.contributionTargetId || state.contributionTaskId) return;
+    const code = String(name).match(/\b([a-z]{2,5})[\s._-]*(\d{3,4})\b/i);
+    if (!code) return;
+    const normalized = (code[1] + code[2]).toLowerCase();
+    const matches = (state.snapshot?.nodes || []).filter(
+      (node) =>
+        node.kind === 'folder' &&
+        String(node.name)
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')
+          .includes(normalized),
+    );
+    if (matches.length !== 1) return;
+    const node = matches[0];
+    button.textContent = 'Suggested: ' + cataloguePathFor(node);
+    button.onclick = () => {
+      setContributionFolder(node.id);
+      button.hidden = true;
+    };
+    button.hidden = false;
+  }
+  document.querySelector('#contribution-choose-folder').onclick = () =>
+    chooseFolder(setContributionFolder);
+  document.querySelector('#contribution-clear-folder').onclick = () => setContributionFolder('');
+  document.querySelector('#contribution-next').onclick = () => {
+    if (useFileUpload && !contributionFile) {
+      contributionMessage.textContent = 'Choose a file first.';
+      dropzone.focus();
+      return;
+    }
+    if (!useFileUpload && !document.querySelector('#contribution-url').reportValidity()) return;
+    contributionMessage.textContent = '';
+    document.querySelector('#contribution-source-step').hidden = true;
+    document.querySelector('#contribution-details-step').hidden = false;
+    document.querySelector('#contribution-title-input').focus();
+  };
+  document.querySelector('#contribution-back').onclick = () => {
+    document.querySelector('#contribution-details-step').hidden = true;
+    document.querySelector('#contribution-source-step').hidden = false;
+    document.querySelector('#contribution-next').focus();
+  };
   for (const [id, file] of [
     ['use-upload', true],
     ['use-link', false],
@@ -1876,7 +1943,7 @@
       document.querySelector('#use-upload').setAttribute('aria-pressed', String(file));
       document.querySelector('#use-link').setAttribute('aria-pressed', String(!file));
       document.querySelector('#contribution-source-help').textContent = file
-        ? 'Your file stays private while reviewers check it. After approval, it is added to the selected repository folder.'
+        ? 'Reviewers can choose a folder if you skip this.'
         : 'For Drive material, share access with thestudymaterialrepository@gmail.com. Review PDFs and images privately here; use video links for videos.';
     };
   async function uploadContribution() {
@@ -1997,19 +2064,6 @@
       return;
     }
     button.disabled = true;
-    if (
-      !(await confirmSubmission(
-        'Submit this material?',
-        document.querySelector('#contribution-title-input').value +
-          ' — ' +
-          (useFileUpload
-            ? contributionFile.name
-            : document.querySelector('#contribution-url').value),
-      ))
-    ) {
-      button.disabled = false;
-      return;
-    }
     button.classList.add('is-loading');
     contributionMessage.textContent = '';
     try {
@@ -3252,6 +3306,21 @@
       form.append(label);
       fields[key] = input;
     }
+    let targetId = item.target_id || '';
+    const destination = document.createElement('p');
+    const updateDestination = () => {
+      const node = snapshotNodeById(targetId);
+      destination.textContent = node ? cataloguePathFor(node) : 'No folder selected';
+    };
+    updateDestination();
+    const changeDestination = actionButton('Change folder', () =>
+      chooseFolder((id) => {
+        targetId = id;
+        updateDestination();
+      }),
+    );
+    changeDestination.type = 'button';
+    form.append(destination, changeDestination);
     const actions = document.createElement('div');
     actions.className = 'task-actions';
     const cancel = actionButton('Cancel', () => dialog.close());
@@ -3269,6 +3338,7 @@
         await callServer('manageContribution', {
           contribution_id: item.id,
           operation: 'edit',
+          target_drive_item_id: targetId,
           ...Object.fromEntries(Object.entries(fields).map(([key, input]) => [key, input.value])),
         });
         dialog.close();

@@ -184,6 +184,9 @@ test('submission editing, withdrawal and clear review notes',async({page})=>{
  await page.getByRole('button',{name:'Edit submission',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Edit submission'});
  await dialog.getByLabel('Title',{exact:true}).fill('Updated submission');
+ await dialog.getByRole('button',{name:'Change folder'}).click();
+ await page.locator('#picker-folders button').first().click();
+ await page.locator('#picker-use').click();
  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
  await page.screenshot({path:test.info().outputPath('edit-submission.png')});
  await dialog.getByRole('button',{name:'Save changes',exact:true}).click();
@@ -193,6 +196,7 @@ test('submission editing, withdrawal and clear review notes',async({page})=>{
  await expect(page.locator('#submission-list')).toContainText('withdrawn');
  await expect(page.locator('#review-list article')).toHaveCount(1);
  expect(calls.map(c=>c.operation)).toEqual(['edit','withdraw']);
+ expect(calls[0].target_drive_item_id).toBeTruthy();
 });
 
 test('claimed task stays expanded and shows owner status in summary',async({page})=>{
@@ -238,20 +242,23 @@ test('overlapping review refreshes render each submission only once',async({page
  await expect(page.locator('#review-list')).toContainText('One stored submission');
 });
 
-test('direct contribution accepts a dropped file and confirms before submission',async({page})=>{
+test('direct contribution starts with a file and can skip a destination',async({page})=>{
  const submitted=[];let uploads=0;
  await page.route('**/api/upload',async route=>{uploads++;expect(route.request().headers().authorization).toBe('Bearer fixture');return route.fulfill({json:{ok:true,data:{id:'upload-fixture'}}});});
  await page.route('**/api',async route=>{const request=route.request().postDataJSON();if(request.action!=='submit_catalogue_contribution')return route.fallback();submitted.push(request.payload);return route.fulfill({json:{ok:true,data:{contribution_id:'new',duplicate:false}}});});
  await page.goto('http://127.0.0.1:4188/#contribute');
- await page.getByRole('button',{name:'Submit material',exact:true}).click();await page.locator('#picker-folders button').first().click();await page.locator('#picker-use').click();
+ await page.getByRole('button',{name:'Submit material',exact:true}).click();
  const form=page.locator('#contribution-dialog');await expect(form).toBeVisible();
  await page.locator('#choose-contribution-file').evaluate(element=>{const transfer=new DataTransfer();transfer.items.add(new File(['example'],'Revision notes.pdf',{type:'application/pdf'}));element.dispatchEvent(new DragEvent('drop',{bubbles:true,dataTransfer:transfer}));});
  await expect(page.locator('#upload-file-label')).toContainText('Revision notes.pdf');
  await page.locator('#contribution-file').setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from('wrong')});
  await expect(page.locator('#upload-file-label')).toHaveText('Drop a file here or choose a file');
  await expect(page.locator('#contribution-message')).toContainText('Choose a PDF');
- await page.locator('#contribution-file').setInputFiles({name:'Revision notes.pdf',mimeType:'application/pdf',buffer:Buffer.from('example')});
+ await page.locator('#contribution-file').setInputFiles({name:'Revision notes.pdf',mimeType:'application/pdf',buffer:Buffer.alloc(50*1024)});
+ await expect(page.locator('#upload-file-label')).toContainText('50 KB');
+ await page.getByRole('button',{name:'Next',exact:true}).click();
  await expect(page.locator('#contribution-title-input')).toHaveValue('Revision notes.pdf');
+ await expect(page.locator('#contribution-target-path')).toHaveText('No folder selected');
  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
  const surface=form.locator(':scope > .m3e-dialog__container');
  await expect(surface).toHaveCount(1);
@@ -260,7 +267,7 @@ test('direct contribution accepts a dropped file and confirms before submission'
  await expect(form.getByRole('button',{name:'Submit for review',exact:true})).toBeInViewport();
  await surface.evaluate(e=>e.scrollTop=0);
  await page.screenshot({path:test.info().outputPath('upload-contribution.png')});
- await form.getByRole('button',{name:'Submit for review',exact:true}).click();expect(uploads).toBe(0);
- await page.getByRole('button',{name:'Confirm submission',exact:true}).click();
+ await form.getByRole('button',{name:'Submit for review',exact:true}).click();
  await expect(form).toBeHidden();expect(uploads).toBe(1);expect(submitted[0].upload_id).toBe('upload-fixture');
+ expect(submitted[0].target_drive_item_id).toBe('');
 });

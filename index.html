@@ -671,54 +671,65 @@
         </button>
       </div>
       <form id="contribution-form" class="auth-form contribution-form">
-        <p class="contribution-destination">
-          <span class="material-symbols-outlined" aria-hidden="true">folder</span
-          ><span id="contribution-target-path"></span>
-        </p>
-        <label
-          >Material title<input
-            id="contribution-title-input"
-            maxlength="180"
-            autocomplete="off"
-            required
-        /></label>
-        <div class="submission-methods" role="group" aria-label="Material source">
-          <button type="button" id="use-upload" aria-pressed="true">Upload file</button>
-          <button type="button" id="use-link" aria-pressed="false">Use a link</button>
+        <div id="contribution-source-step">
+          <div class="submission-methods" role="group" aria-label="Material source">
+            <button type="button" id="use-upload" aria-pressed="true">Upload file</button>
+            <button type="button" id="use-link" aria-pressed="false">Use a link</button>
+          </div>
+          <div id="upload-fields">
+            <input id="contribution-file" type="file" hidden />
+            <button id="choose-contribution-file" type="button" class="upload-dropzone">
+              <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
+              <span id="upload-file-label">Drop a file here or choose a file</span>
+            </button>
+            <button id="remove-contribution-file" class="text-button" type="button" hidden>
+              Remove file
+            </button>
+          </div>
+          <label id="contribution-link-field" hidden
+            >Material link<input
+              id="contribution-url"
+              type="url"
+              inputmode="url"
+              placeholder="https://…"
+              autocomplete="url"
+          /></label>
+          <button class="tonal-button" id="contribution-next" type="button">Next</button>
         </div>
-        <div id="upload-fields">
-          <input
-            id="contribution-file"
-            type="file"
-            accept="application/pdf,image/png,image/jpeg"
+        <div id="contribution-details-step" hidden>
+          <label
+            >Material title<input
+              id="contribution-title-input"
+              maxlength="180"
+              autocomplete="off"
+              required
+          /></label>
+          <p class="contribution-destination">
+            <span class="material-symbols-outlined" aria-hidden="true">folder</span
+            ><span id="contribution-target-path">No folder selected</span>
+          </p>
+          <button class="text-button" id="contribution-choose-folder" type="button">
+            Choose folder (optional)
+          </button>
+          <button class="text-button" id="contribution-clear-folder" type="button" hidden>
+            Let reviewers choose
+          </button>
+          <button
+            class="text-button"
+            id="contribution-suggest-folder"
+            type="button"
             hidden
-          />
-          <button id="choose-contribution-file" type="button" class="upload-dropzone">
-            <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
-            <span id="upload-file-label">Drop a file here or choose a file</span>
-            <span class="dialog-copy">PDF, PNG or JPEG · up to 20 MB · PDFs up to 150 pages</span>
-          </button>
-          <button id="remove-contribution-file" class="text-button" type="button" hidden>
-            Remove file
-          </button>
+          ></button>
+          <label
+            >Note for reviewers <span class="optional-label">optional</span
+            ><textarea id="contribution-note" maxlength="1000" rows="3"></textarea>
+          </label>
+          <p class="form-help" id="contribution-source-help">
+            Reviewers can choose a folder if you skip this.
+          </p>
+          <button class="text-button" id="contribution-back" type="button">Back</button>
+          <button class="tonal-button" type="submit">Submit for review</button>
         </div>
-        <label id="contribution-link-field" hidden
-          >Material link<input
-            id="contribution-url"
-            type="url"
-            inputmode="url"
-            placeholder="https://…"
-            autocomplete="url"
-        /></label>
-        <label
-          >Note for reviewers <span class="optional-label">optional</span
-          ><textarea id="contribution-note" maxlength="1000" rows="3"></textarea>
-        </label>
-        <p class="form-help" id="contribution-source-help">
-          Your file stays private while reviewers check it. After approval, it is added to the
-          selected repository folder.
-        </p>
-        <button class="tonal-button" type="submit">Submit for review</button>
       </form>
       <p class="form-message" id="contribution-message" aria-live="polite"></p>
     </dialog>
@@ -808,7 +819,7 @@
     <script src="./chat-ui.js?v=20261111-unread-1"></script>
     <script src="./motion.js?v=20261031-uniform"></script>
     <script src="website-extras.js?v=20261109-avatars"></script>
-    <script src="./app.js?v=20261111-uploads-1"></script>
+    <script src="./app.js?v=20261111-contribute-steps"></script>
     <script src="./controls.js?v=20261023b"></script>
     <script src="./ui-components.js?v=20261031-uniform"></script>
     <script src="./site-header.js?v=20261031-uniform"></script>

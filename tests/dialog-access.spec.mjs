@@ -3,6 +3,7 @@ const member = {member_id:'fixture',school_email:'student@example.com',delivery_
 const nodes = [
  {id:'root',name:'Root',kind:'folder',parent_id:'',access:{mode:'open'}},
  {id:'folder',name:'🪙',kind:'folder',parent_id:'root',coin_marked:true,access:{mode:'locked_folder'}},
+ {id:'course',name:'CSC 434 Cloud Computing',kind:'folder',parent_id:'root',access:{mode:'open'}},
  {id:'file',name:'Example exam',kind:'file',parent_id:'folder',access:{mode:'requestable',price_millis:1000}},
 ];
 for (const dismiss of ['escape', 'native']) test('access confirmation can be retried after ' + dismiss + ' dismissal', async ({page}) => {
@@ -55,17 +56,24 @@ test('folder picker hands off to contribution and can be opened again', async ({
  await page.goto('http://127.0.0.1:4188/');
  await page.locator('[data-view="contribute"]').click();
  await page.locator('#contribute-button').click();
+ const contribution=page.locator('#contribution-dialog');
+ await expect(contribution).toBeVisible();
+ await page.locator('#contribution-file').setInputFiles({name:'CSC434 notes.pdf',mimeType:'application/pdf',buffer:Buffer.from('example')});
+ await page.locator('#contribution-next').click();
+ await expect(page.locator('#contribution-suggest-folder')).toContainText('CSC 434');
+ await page.locator('#contribution-suggest-folder').click();
+ await expect(page.locator('#contribution-target-path')).toContainText('CSC 434');
+ await page.locator('#contribution-choose-folder').click();
  const picker=page.locator('#folder-picker');
  await expect(picker).toBeVisible();
  await picker.getByRole('button',{name:'Root ›'}).click();
  await picker.locator('#picker-use').click();
- const contribution=page.locator('#contribution-dialog');
  await expect(contribution).toBeVisible();
  await expect(contribution).toContainText('Root');
  await contribution.locator('#close-contribution-dialog').click();
  await expect(contribution).toBeHidden();
  await page.locator('#contribute-button').click();
- await expect(picker).toBeVisible();
+ await expect(contribution).toBeVisible();
 });
 
 test('access check updates the same dialog and purchase requires confirmation', async ({page}) => {
