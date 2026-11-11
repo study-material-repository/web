@@ -433,7 +433,7 @@
       : 'Request access for the price shown.';
     requestConfirm.textContent = checkingOwnedFile ? 'Check access' : 'Request access';
     setRequestProgress('', false);
-    window.SMRMaterial.open(requestDialog);
+    if (!requestDialog.open) window.SMRMaterial.open(requestDialog);
     return new Promise((resolve) => {
       resolvePendingRequest = resolve;
     });
@@ -935,7 +935,6 @@
       delete node.checkToken;
       requestInFlight = false;
       setRequestProgress('', false);
-      window.SMRMaterial.close(requestDialog);
       if (result.status === 'ACCESS_REQUIRED') {
         node.checkToken = result.check_token;
         node.access = {
@@ -978,13 +977,15 @@
           'Access confirmed for ' + (result.delivery_email || state.member.delivery_email) + '.';
         requestConfirm.textContent = 'Open file';
         requestCancel.textContent = 'Close';
-        window.SMRMaterial.open(requestDialog);
+        if (!requestDialog.open) window.SMRMaterial.open(requestDialog);
         const open = await new Promise((resolve) => {
           resolvePendingRequest = resolve;
         });
         window.SMRMaterial.close(requestDialog);
         requestCancel.textContent = 'Cancel';
         if (open) openCatalogueFile(node);
+      } else {
+        window.SMRMaterial.close(requestDialog);
       }
       refreshMemberCatalogueState().catch(() => {});
     } catch (error) {
