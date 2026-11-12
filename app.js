@@ -213,6 +213,10 @@
       ],
       communityTasks: ['community_tasks', { session_token: state.token }],
       adminEditTask: ['admin_edit_task', { session_token: state.token, ...args[0] }],
+      adminTreasuryTransfer: [
+        'admin_treasury_transfer',
+        { session_token: state.token, ...args[0] },
+      ],
       activateImportedTask: [
         'activate_imported_task',
         { session_token: state.token, task_id: args[0] },

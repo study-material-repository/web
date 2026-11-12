@@ -199,6 +199,50 @@ test('submission editing, withdrawal and clear review notes',async({page})=>{
  expect(calls[0].target_drive_item_id).toBeTruthy();
 });
 
+test('treasury payment requires confirmation and retries the same request',async({page})=>{
+ const requests=[];
+ await page.route('**/api',async route=>{
+  const request=route.request().postDataJSON();
+  if(request.action!=='admin_treasury_transfer')return route.fallback();
+  requests.push(request.payload);
+  if(requests.length===1)return route.fulfill({status:502,json:{ok:false,error:'Temporary failure'}});
+  return route.fulfill({json:{ok:true,data:{recipient:'Test member',duplicate:true}}});
+ });
+ await page.goto('http://127.0.0.1:4188/#activity');
+ await page.getByRole('button',{name:'Repository dashboard',exact:true}).click();
+ const dialog=page.locator('dialog.repository-dashboard');
+ await dialog.getByText('Pay from treasury',{exact:true}).first().click();
+ await dialog.getByLabel('Member email or address').fill('test@example.com');
+ await dialog.getByLabel('Coins',{exact:true}).fill('2.125');
+ await dialog.getByLabel('Reason',{exact:true}).fill('Contribution reward');
+ await dialog.getByRole('button',{name:'Review payment'}).click();
+ expect(requests).toHaveLength(0);
+ await dialog.getByRole('button',{name:'Confirm payment'}).click();
+ await expect(dialog.getByRole('button',{name:'Retry payment'})).toBeVisible();
+ await expect(dialog.getByLabel('Coins',{exact:true})).toHaveAttribute('readonly','');
+ await dialog.getByRole('button',{name:'Retry payment'}).click();
+ await expect(dialog.getByRole('status')).toContainText('Payment recorded');
+ expect(requests).toHaveLength(2);expect(requests[0].request_id).toBe(requests[1].request_id);
+});
+
+test('economy dashboard shows safe aggregate figures and snapshot charts',async({page})=>{
+ await page.route('**/api',async route=>{
+  if(route.request().postDataJSON().action!=='website_data')return route.fallback();
+  const economy={reserve_millis:10000,outside_millis:6000,mean_millis:3000,median_millis:3000,members:2,transactions_per_day:null,history:[
+   {day:'2026-01-01',reserve_millis:9000,outside_millis:7000,mean_millis:3500,median_millis:3500,members:2},
+   {day:'2026-01-02',reserve_millis:10000,outside_millis:6000,mean_millis:3000,median_millis:3000,members:2}]};
+  return route.fulfill({json:{ok:true,data:{admin:{members:2,active_7_days:1,visits:3,messages:0,files:1,folders:1,new_files:0,users:[],days:[],economy},stats:{},recent:[],additions:[]}}});
+ });
+ await page.goto('http://127.0.0.1:4188/#activity');
+ await page.getByRole('button',{name:'Repository dashboard',exact:true}).click();
+ const dialog=page.locator('dialog.repository-dashboard');
+ await expect(dialog).toContainText('Coins in reserve');await expect(dialog).toContainText('10');
+ await expect(dialog.getByRole('img',{name:/Reserve from 2026-01-01/})).toBeVisible();
+ await expect(dialog).toContainText('Historical transactions per day are not yet available');
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ await page.screenshot({path:test.info().outputPath('economy-dashboard.png'),fullPage:true});
+});
+
 test('claimed task stays expanded and shows owner status in summary',async({page})=>{
  let claim=null;
  await page.route('**/api',async route=>{

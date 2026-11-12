@@ -638,6 +638,100 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
       header.className = 'dialog-header';
       header.append(title, close);
       admin.append(header);
+      const treasuryForm = document.createElement('form');
+      const treasuryHeading = document.createElement('h2');
+      treasuryHeading.textContent = 'Pay from treasury';
+      const treasuryHelp = document.createElement('p');
+      treasuryHelp.textContent =
+        'Send existing treasury coins to a member, including your own account.';
+      const treasuryFields = {};
+      for (const [key, caption, type] of [
+        ['recipient', 'Member email or address', 'text'],
+        ['coins', 'Coins', 'number'],
+        ['reason', 'Reason', 'text'],
+      ]) {
+        const label = document.createElement('label'),
+          input = document.createElement('input');
+        label.textContent = caption;
+        input.type = type;
+        input.required = true;
+        if (key === 'coins') {
+          input.min = '0.001';
+          input.step = '0.001';
+        }
+        if (key === 'reason') {
+          input.minLength = 3;
+          input.maxLength = 200;
+        }
+        label.append(input);
+        treasuryFields[key] = input;
+        treasuryForm.append(label);
+      }
+      const treasuryStatus = document.createElement('p');
+      treasuryStatus.setAttribute('role', 'status');
+      const treasuryPay = document.createElement('button');
+      treasuryPay.type = 'submit';
+      treasuryPay.className = 'tonal-button';
+      treasuryPay.textContent = 'Review payment';
+      treasuryForm.prepend(treasuryHeading, treasuryHelp);
+      treasuryForm.append(treasuryStatus, treasuryPay);
+      let treasuryRequest = null,
+        treasuryConfirmed = false;
+      treasuryForm.onsubmit = async (event) => {
+        event.preventDefault();
+        if (treasuryPay.disabled) return;
+        if (!treasuryConfirmed) {
+          treasuryStatus.textContent =
+            'Confirm ' +
+            treasuryFields.coins.value +
+            ' coins to ' +
+            treasuryFields.recipient.value +
+            '.';
+          treasuryPay.textContent = 'Confirm payment';
+          treasuryConfirmed = true;
+          return;
+        }
+        if (!treasuryRequest)
+          treasuryRequest = {
+            recipient: treasuryFields.recipient.value.trim(),
+            coins: treasuryFields.coins.value,
+            reason: treasuryFields.reason.value.trim(),
+            request_id: crypto.randomUUID(),
+          };
+        Object.values(treasuryFields).forEach((input) => (input.readOnly = true));
+        treasuryPay.disabled = true;
+        treasuryStatus.textContent = 'Sending payment…';
+        try {
+          const result = await callServer('adminTreasuryTransfer', treasuryRequest);
+          treasuryStatus.textContent = 'Payment recorded for ' + result.recipient + '.';
+          treasuryRequest = null;
+          treasuryConfirmed = false;
+          treasuryForm.reset();
+          Object.values(treasuryFields).forEach((input) => (input.readOnly = false));
+          treasuryPay.textContent = 'Review payment';
+        } catch (error) {
+          treasuryStatus.textContent =
+            error.message +
+            ' If the result is uncertain, retry this same payment before starting another.';
+          treasuryPay.textContent = 'Retry payment';
+        } finally {
+          treasuryPay.disabled = false;
+        }
+      };
+      Object.values(treasuryFields).forEach((input) =>
+        input.addEventListener('input', () => {
+          if (!treasuryRequest) {
+            treasuryConfirmed = false;
+            treasuryPay.textContent = 'Review payment';
+            treasuryStatus.textContent = '';
+          }
+        }),
+      );
+      const treasurySection = document.createElement('details');
+      const treasurySummary = document.createElement('summary');
+      treasurySummary.textContent = 'Pay from treasury';
+      treasurySection.append(treasurySummary, treasuryForm);
+      admin.append(treasurySection);
       const p = document.createElement('p');
       p.textContent = `${data.admin.members} members · ${data.admin.active_7_days} active in 7 days · ${data.admin.visits} visits · ${data.admin.messages} messages`;
       const cards = document.createElement('dl');
@@ -660,6 +754,82 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
         cards.append(box);
       }
       admin.append(cards);
+      if (data.admin.economy) {
+        const economy = data.admin.economy;
+        const heading = document.createElement('h2');
+        heading.textContent = 'Coin economy';
+        const economyCards = document.createElement('dl');
+        economyCards.className = 'stats-grid';
+        const formatCoins = (value) =>
+          value == null
+            ? '—'
+            : new Intl.NumberFormat('en', { maximumFractionDigits: 3 }).format(value / 1000);
+        for (const [label, value] of [
+          ['Coins in reserve', formatCoins(economy.reserve_millis)],
+          ['Coins outside reserve', formatCoins(economy.outside_millis)],
+          ['Mean member balance', formatCoins(economy.mean_millis)],
+          ['Median member balance', formatCoins(economy.median_millis)],
+          ['Members with balances', economy.members],
+        ]) {
+          const box = document.createElement('div'),
+            dt = document.createElement('dt'),
+            dd = document.createElement('dd');
+          dt.textContent = label;
+          dd.textContent = value;
+          box.append(dt, dd);
+          economyCards.append(box);
+        }
+        admin.append(heading, economyCards);
+        const history = economy.history || [];
+        const detail = document.createElement('p');
+        detail.className = 'dialog-copy';
+        detail.textContent =
+          'Daily snapshots begin when this dashboard is viewed. Historical transactions per day are not yet available.';
+        admin.append(detail);
+        if (history.length > 1)
+          for (const [label, key] of [
+            ['Reserve', 'reserve_millis'],
+            ['Outside reserve', 'outside_millis'],
+            ['Mean balance', 'mean_millis'],
+            ['Median balance', 'median_millis'],
+            ['Members', 'members'],
+          ]) {
+            const points = history.filter((row) => Number.isFinite(row[key]));
+            if (points.length < 2) continue;
+            const wrap = document.createElement('section'),
+              caption = document.createElement('h3');
+            caption.textContent = label;
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 300 80');
+            svg.setAttribute('role', 'img');
+            svg.setAttribute(
+              'aria-label',
+              label + ' from ' + points[0].day + ' to ' + points[points.length - 1].day,
+            );
+            const values = points.map((row) => row[key]),
+              min = Math.min(...values),
+              range = Math.max(1, Math.max(...values) - min);
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            line.setAttribute(
+              'points',
+              points
+                .map(
+                  (row, i) =>
+                    (i * 300) / (points.length - 1) + ',' + (75 - ((row[key] - min) * 70) / range),
+                )
+                .join(' '),
+            );
+            line.setAttribute('fill', 'none');
+            line.setAttribute('stroke', 'currentColor');
+            line.setAttribute('stroke-width', '2');
+            svg.append(line);
+            const dates = document.createElement('p');
+            dates.className = 'dialog-copy';
+            dates.textContent = points[0].day + ' to ' + points[points.length - 1].day;
+            wrap.append(caption, svg, dates);
+            admin.append(wrap);
+          }
+      }
       const chart = document.createElement('div');
       chart.className = 'usage-chart';
       chart.setAttribute('role', 'img');
