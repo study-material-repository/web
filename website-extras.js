@@ -677,6 +677,26 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
       treasuryForm.append(treasuryStatus, treasuryPay);
       let treasuryRequest = null,
         treasuryConfirmed = false;
+      const treasuryStorageKey = () => {
+        const memberId = state.member?.member_id || state.memberId;
+        return memberId ? 'smr_treasury_pending_' + String(memberId) : '';
+      };
+      try {
+        treasuryRequest = treasuryStorageKey()
+          ? JSON.parse(sessionStorage.getItem(treasuryStorageKey()) || 'null')
+          : null;
+      } catch {
+        treasuryRequest = null;
+      }
+      if (treasuryRequest) {
+        for (const key of ['recipient', 'coins', 'reason'])
+          treasuryFields[key].value = treasuryRequest[key];
+        Object.values(treasuryFields).forEach((input) => (input.readOnly = true));
+        treasuryConfirmed = true;
+        treasuryPay.textContent = 'Retry payment';
+        treasuryStatus.textContent =
+          'A previous payment may still be pending. Retry it before starting another.';
+      }
       treasuryForm.onsubmit = async (event) => {
         event.preventDefault();
         if (treasuryPay.disabled) return;
@@ -691,29 +711,56 @@ window.setupWebsiteExtras = function ({ state, callServer, requestAccess }) {
           treasuryConfirmed = true;
           return;
         }
-        if (!treasuryRequest)
+        if (!treasuryRequest) {
           treasuryRequest = {
             recipient: treasuryFields.recipient.value.trim(),
             coins: treasuryFields.coins.value,
             reason: treasuryFields.reason.value.trim(),
             request_id: crypto.randomUUID(),
           };
+          try {
+            if (!treasuryStorageKey()) throw new Error('Member identity unavailable');
+            sessionStorage.setItem(treasuryStorageKey(), JSON.stringify(treasuryRequest));
+          } catch {
+            treasuryRequest = null;
+            treasuryStatus.textContent =
+              'Your browser could not save a safe retry reference. Enable browser storage and try again.';
+            return;
+          }
+        }
         Object.values(treasuryFields).forEach((input) => (input.readOnly = true));
         treasuryPay.disabled = true;
         treasuryStatus.textContent = 'Sending payment…';
         try {
           const result = await callServer('adminTreasuryTransfer', treasuryRequest);
           treasuryStatus.textContent = 'Payment recorded for ' + result.recipient + '.';
+          sessionStorage.removeItem(treasuryStorageKey());
           treasuryRequest = null;
           treasuryConfirmed = false;
           treasuryForm.reset();
           Object.values(treasuryFields).forEach((input) => (input.readOnly = false));
           treasuryPay.textContent = 'Review payment';
         } catch (error) {
-          treasuryStatus.textContent =
-            error.message +
-            ' If the result is uncertain, retry this same payment before starting another.';
-          treasuryPay.textContent = 'Retry payment';
+          const rejected =
+            /^(INSUFFICIENT_BALANCE|No active SMR account matches that address\.|Enter a positive amount with at most three decimal places\.|Enter a short reason for this payment\.|The treasury identity needs administrator verification before payments can be sent\.|Admin access required\.)$/.test(
+              error.message,
+            );
+          if (rejected) {
+            sessionStorage.removeItem(treasuryStorageKey());
+            treasuryRequest = null;
+            treasuryConfirmed = false;
+            Object.values(treasuryFields).forEach((input) => (input.readOnly = false));
+            treasuryStatus.textContent =
+              error.message === 'INSUFFICIENT_BALANCE'
+                ? 'The treasury does not have enough coins.'
+                : error.message;
+            treasuryPay.textContent = 'Review payment';
+          } else {
+            treasuryStatus.textContent =
+              error.message +
+              ' If the result is uncertain, retry this same payment before starting another.';
+            treasuryPay.textContent = 'Retry payment';
+          }
         } finally {
           treasuryPay.disabled = false;
         }

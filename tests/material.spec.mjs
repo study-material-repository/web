@@ -219,6 +219,9 @@ test('treasury payment requires confirmation and retries the same request',async
  expect(requests).toHaveLength(0);
  await dialog.getByRole('button',{name:'Confirm payment'}).click();
  await expect(dialog.getByRole('button',{name:'Retry payment'})).toBeVisible();
+ await page.reload();
+ await page.getByRole('button',{name:'Repository dashboard',exact:true}).click();
+ await dialog.getByText('Pay from treasury',{exact:true}).first().click();
  await expect(dialog.getByLabel('Coins',{exact:true})).toHaveAttribute('readonly','');
  await dialog.getByRole('button',{name:'Retry payment'}).click();
  await expect(dialog.getByRole('status')).toContainText('Payment recorded');
@@ -241,6 +244,20 @@ test('economy dashboard shows safe aggregate figures and snapshot charts',async(
  await expect(dialog).toContainText('Historical transactions per day are not yet available');
  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
  await page.screenshot({path:test.info().outputPath('economy-dashboard.png'),fullPage:true});
+});
+
+test('a rejected treasury payment can be corrected',async({page})=>{
+ await page.route('**/api',async route=>{
+  if(route.request().postDataJSON().action!=='admin_treasury_transfer')return route.fallback();
+  return route.fulfill({status:502,json:{ok:false,error:'INSUFFICIENT_BALANCE'}});
+ });
+ await page.goto('http://127.0.0.1:4188/#activity');
+ await page.getByRole('button',{name:'Repository dashboard',exact:true}).click();
+ const dialog=page.locator('dialog.repository-dashboard');await dialog.getByText('Pay from treasury',{exact:true}).first().click();
+ await dialog.getByLabel('Member email or address').fill('test@example.com');await dialog.getByLabel('Coins',{exact:true}).fill('999');await dialog.getByLabel('Reason',{exact:true}).fill('Correction');
+ await dialog.getByRole('button',{name:'Review payment'}).click();await dialog.getByRole('button',{name:'Confirm payment'}).click();
+ await expect(dialog.getByRole('status')).toContainText('does not have enough coins');
+ await expect(dialog.getByLabel('Coins',{exact:true})).toBeEditable();
 });
 
 test('claimed task stays expanded and shows owner status in summary',async({page})=>{
