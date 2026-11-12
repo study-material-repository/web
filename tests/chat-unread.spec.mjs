@@ -19,6 +19,7 @@ test('navigation unread badge tracks notifications without marking background ch
  const badge=page.locator('.chat-unread-badge');
  const nav=page.locator('[data-view="chat"]');
  await expect(badge).toBeVisible();
+ expect((await badge.boundingBox()).width).toBeGreaterThanOrEqual(14);
  await expect(nav).toHaveAttribute('aria-label','Chat, unread messages');
  await page.screenshot({path:test.info().outputPath('unread-indicator.png')});
  expect(calls.some(c=>c.mark_read===false)).toBe(true);

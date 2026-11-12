@@ -1035,6 +1035,10 @@
     position: absolute;
     inset-block-start: 0;
     inset-inline-end: 4px;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--m3e-sys-color-surface);
+    border-radius: 50%;
     background: var(--m3e-sys-color-primary);
   }
 }
